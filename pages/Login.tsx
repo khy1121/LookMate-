@@ -3,12 +3,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { register, login as authLogin } from '../services/authService';
+import { getCurrentBrand } from '../config/branding';
 
 type Mode = 'login' | 'register';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const setCurrentUser = useStore((state) => state.setCurrentUser);
+  
+  const { logoSrc, tagline } = getCurrentBrand();
   
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -55,11 +58,10 @@ export const Login: React.FC = () => {
       <div className="bg-white p-8 md:p-10 rounded-2xl shadow-2xl max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">👗</div>
+          <img src={logoSrc} alt="LookMate 로고" className="h-20 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-gray-800 mb-2">LookMate</h1>
-          <p className="text-gray-500 text-sm">
-            AI 가상 피팅룸 & 스타일 어시스턴트
-          </p>
+          <p className="text-gray-500 text-sm mb-1">{tagline}</p>
+          <p className="text-gray-400 text-xs">AI가 도와주는 나만의 가상 피팅룸</p>
         </div>
 
         {/* Mode Tabs */}

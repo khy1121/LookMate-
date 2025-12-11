@@ -3,6 +3,7 @@ import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { logout as authLogout } from '../../services/authService';
+import { getCurrentBrand } from '../../config/branding';
 
 const NAV_ITEMS = [
   { path: '/app/dashboard', label: '홈', icon: '🏠' },
@@ -18,6 +19,8 @@ export const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useStore((state) => state.currentUser);
   const setCurrentUser = useStore((state) => state.setCurrentUser);
+
+  const { logoSrc, tagline } = getCurrentBrand();
 
   const handleLogout = async () => {
     if (!confirm('로그아웃하시겠습니까?')) return;
@@ -35,14 +38,20 @@ export const AppLayout: React.FC = () => {
     <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden font-sans">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 shadow-sm z-10">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-indigo-600 tracking-tight">LookMate</h1>
-          {currentUser && (
-            <p className="text-xs text-gray-500 mt-1 truncate">
+        <div className="p-6 flex items-center gap-3">
+          <img src={logoSrc} alt="LookMate 로고" className="h-10" />
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-indigo-600">LookMate</h1>
+            <p className="text-[10px] text-gray-400 leading-tight">{tagline}</p>
+          </div>
+        </div>
+        {currentUser && (
+          <div className="px-6 pb-4">
+            <p className="text-xs text-gray-500 truncate">
               {currentUser.displayName}
             </p>
-          )}
-        </div>
+          </div>
+        )}
         <nav className="flex-1 px-4 space-y-2">
           {NAV_ITEMS.map((item) => (
             <NavLink

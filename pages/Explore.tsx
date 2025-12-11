@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PublicLook, Product, ClothingItem } from '../types';
 import { searchSimilarProductsByItem } from '../services/productService';
+import { dataService } from '../services/dataService';
 import { useStore } from '../store/useStore';
 import { useUiStore } from '../store/useUiStore';
 import { ProductCard } from '../components/common/ProductCard';
@@ -25,12 +26,45 @@ export const Explore: React.FC = () => {
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   
+  // 백엔드 데이터 로딩 상태
+  const [backendLooks, setBackendLooks] = useState<PublicLook[]>([]);
+  const [loadingBackend, setLoadingBackend] = useState(false);
+  const [useBackend, setUseBackend] = useState(!!import.meta.env.VITE_API_BASE_URL);
+  
   // Product filters
   const [productSortBy, setProductSortBy] = useState<ProductSortOption>('recommend');
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
 
-  const sortedLooks = [...publicLooks].sort((a, b) => {
+  // 백엔드에서 공개 코디 목록 로드
+  useEffect(() => {
+    if (!useBackend) return;
+    
+    const loadPublicLooks = async () => {
+      setLoadingBackend(true);
+      try {
+        const looks = await dataService.fetchPublicLooks({
+          limit: 20,
+          sort: sortBy === 'likes' ? 'likes' : 'latest',
+        });
+        setBackendLooks(looks);
+      } catch (error) {
+        console.error('[Explore] Failed to load public looks:', error);
+        showToast('공개 코디를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+        // 백엔드 실패 시 Mock 데이터로 fallback
+        setUseBackend(false);
+      } finally {
+        setLoadingBackend(false);
+      }
+    };
+
+    loadPublicLooks();
+  }, [sortBy, useBackend, showToast]);
+
+  // 백엔드 사용 여부에 따라 데이터 소스 결정
+  const displayLooks = useBackend ? backendLooks : publicLooks;
+
+  const sortedLooks = [...displayLooks].sort((a, b) => {
     switch (sortBy) {
       case 'likes':
         return b.likesCount - a.likesCount;
@@ -135,8 +169,26 @@ export const Explore: React.FC = () => {
       </div>
 
       {/* Looks Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {sortedLooks.map((look) => (
+      {loadingBackend ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, idx) => (
+            <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <Skeleton className="aspect-[3/4]" />
+              <div className="p-3 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : sortedLooks.length === 0 ? (
+        <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-400">
+          <span className="text-4xl mb-2 block">🌐</span>
+          <p>아직 공개된 코디가 없습니다.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {sortedLooks.map((look) => (
           <div
             key={look.publicId}
             className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
@@ -195,7 +247,8 @@ export const Explore: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selectedLook && (

@@ -1,10 +1,18 @@
 <div align="center">
-<img width="1200" height="475" alt="LookMate Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+<img width="1200" height="475" alt="LookMate Banner" src="C:\LookMate\config\branding\lookmate-logo-neon.png"/>
 </div>
 
 # LookMate - AI 가상 피팅 & 쇼핑 어시스턴트
 
 AI 기술을 활용한 개인 맞춤형 패션 코디 및 가상 피팅 서비스입니다.
+
+## ✨ 최근 업데이트
+
+- ✅ **Step 21** – PublicLook 백엔드 연동 & 로고 브랜딩 시스템 구축 완료
+  - Explore 페이지에서 Prisma + SQLite 백엔드 데이터 연동
+  - 브랜딩 설정 시스템 (`config/branding.ts`) 구축
+  - 로고 variant 전환 지원 (soft/neon 테마)
+  - AppLayout 및 Login 페이지에 로고 적용
 
 ## 주요 기능
 
