@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, ClothingItem, Look, ActiveLook, FittingLayer } from '../types';
+import { User, ClothingItem, Look, ActiveLook, FittingLayer, Season } from '../types';
 
 // LocalStorage Helper
 const getLocalStorage = <T>(key: string, initial: T): T => {
@@ -47,6 +47,12 @@ interface AppState {
   updateLayer: (clothingId: string, patch: Partial<FittingLayer>) => void;
   removeItemFromActiveLook: (clothingId: string) => void;
   clearActiveLook: () => void;
+
+  // Recommendation State
+  recommendedItems: ClothingItem[] | null;
+  generateRecommendedItems: (options?: { season?: Season }) => void;
+  clearRecommendedItems: () => void;
+  applyRecommendedToActive: () => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -215,4 +221,102 @@ export const useStore = create<AppState>((set, get) => ({
     }),
 
   clearActiveLook: () => set({ activeLook: null }),
+
+  // Recommendation
+  recommendedItems: null,
+
+  generateRecommendedItems: (options) =>
+    set((state) => {
+      const { season } = options || {};
+      
+      // 시즌 필터링
+      let availableItems = state.clothes;
+      if (season) {
+        availableItems = state.clothes.filter(
+          (item) => !item.season || item.season === season
+        );
+      }
+
+      // 카테고리별로 그룹화
+      const byCategory: Record<string, ClothingItem[]> = {};
+      availableItems.forEach((item) => {
+        if (!byCategory[item.category]) {
+          byCategory[item.category] = [];
+        }
+        byCategory[item.category].push(item);
+      });
+
+      const recommended: ClothingItem[] = [];
+
+      // 룰 기반 추천 로직
+      // 1순위: onepiece 기반 코디
+      if (byCategory['onepiece']?.length > 0) {
+        const onepiece = byCategory['onepiece'][Math.floor(Math.random() * byCategory['onepiece'].length)];
+        recommended.push(onepiece);
+        
+        // outer 추가 (선택적)
+        if (byCategory['outer']?.length > 0 && Math.random() > 0.5) {
+          const outer = byCategory['outer'][Math.floor(Math.random() * byCategory['outer'].length)];
+          recommended.push(outer);
+        }
+        
+        // shoes 추가 (선택적)
+        if (byCategory['shoes']?.length > 0) {
+          const shoes = byCategory['shoes'][Math.floor(Math.random() * byCategory['shoes'].length)];
+          recommended.push(shoes);
+        }
+      } 
+      // 2순위: top + bottom 조합
+      else if (byCategory['top']?.length > 0 && byCategory['bottom']?.length > 0) {
+        const top = byCategory['top'][Math.floor(Math.random() * byCategory['top'].length)];
+        const bottom = byCategory['bottom'][Math.floor(Math.random() * byCategory['bottom'].length)];
+        recommended.push(top, bottom);
+        
+        // outer 추가 (선택적)
+        if (byCategory['outer']?.length > 0 && Math.random() > 0.5) {
+          const outer = byCategory['outer'][Math.floor(Math.random() * byCategory['outer'].length)];
+          recommended.push(outer);
+        }
+        
+        // shoes 추가 (선택적)
+        if (byCategory['shoes']?.length > 0) {
+          const shoes = byCategory['shoes'][Math.floor(Math.random() * byCategory['shoes'].length)];
+          recommended.push(shoes);
+        }
+      }
+      
+      // accessory 추가 (선택적, 33% 확률)
+      if (byCategory['accessory']?.length > 0 && Math.random() > 0.66) {
+        const accessory = byCategory['accessory'][Math.floor(Math.random() * byCategory['accessory'].length)];
+        recommended.push(accessory);
+      }
+
+      return { recommendedItems: recommended.length > 0 ? recommended : null };
+    }),
+
+  clearRecommendedItems: () => set({ recommendedItems: null }),
+
+  applyRecommendedToActive: () =>
+    set((state) => {
+      if (!state.recommendedItems || state.recommendedItems.length === 0) {
+        return {};
+      }
+
+      // 새로운 레이어 생성
+      const newLayers: FittingLayer[] = state.recommendedItems.map((item) => ({
+        clothingId: item.id,
+        x: 0,
+        y: 0,
+        scale: 1,
+        rotation: 0,
+        visible: true,
+      }));
+
+      return {
+        activeLook: {
+          layers: newLayers,
+          name: undefined,
+        },
+      };
+    }),
 }));

@@ -2,6 +2,7 @@
 export type Category = 'top' | 'bottom' | 'outer' | 'onepiece' | 'shoes' | 'accessory';
 export type BodyType = 'slim' | 'normal' | 'athletic' | 'chubby';
 export type Gender = 'male' | 'female' | 'unisex';
+export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
 export interface User {
   id: string;
@@ -22,6 +23,7 @@ export interface ClothingItem {
   color: string;
   brand?: string;
   size?: string;
+  season?: Season;
   memo?: string;
   isFavorite: boolean;
   createdAt: number;
