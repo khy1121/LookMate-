@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import aiRoutes from './routes/ai';
+import dataRoutes from './routes/data';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 app.use('/api/ai', aiRoutes);
+app.use('/api/data', dataRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

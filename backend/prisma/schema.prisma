@@ -1,0 +1,110 @@
+// This is your Prisma schema file for LookMate
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Domain Models
+// ============================================
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String   // Same as displayName for now
+  displayName String
+  avatarUrl   String?
+  height      Int?
+  bodyType    String?  // 'slim' | 'normal' | 'athletic' | 'chubby'
+  gender      String?  // 'male' | 'female' | 'unisex'
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  clothingItems ClothingItem[]
+  looks         Look[]
+  
+  // Future: passwordHash for real authentication
+  // passwordHash String?
+  
+  @@map("users")
+}
+
+model ClothingItem {
+  id               String   @id @default(cuid())
+  userId           String
+  category         String   // 'top' | 'bottom' | 'outer' | 'onepiece' | 'shoes' | 'accessory'
+  imageUrl         String   // Background-removed image
+  originalImageUrl String
+  color            String
+  season           String?  // 'spring' | 'summer' | 'fall' | 'winter'
+  brand            String?
+  size             String?
+  tags             String   // JSON array stored as string
+  memo             String?
+  isFavorite       Boolean  @default(false)
+  
+  // Shopping metadata
+  shoppingUrl String?
+  price       Int?     // Price in KRW (원 단위)
+  isPurchased Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([category])
+  @@map("clothing_items")
+}
+
+model Look {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  itemIds     String   // JSON array of ClothingItem IDs
+  layers      String   // JSON array of FittingLayer objects
+  snapshotUrl String?
+  
+  // Public sharing
+  isPublic Boolean @default(false)
+  tags     String  // JSON array of tags
+  
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publicLook PublicLook?
+  
+  @@index([userId])
+  @@index([isPublic])
+  @@map("looks")
+}
+
+model PublicLook {
+  id             String   @id @default(cuid())
+  lookId         String   @unique
+  publicId       String   @unique // URL-friendly sharing ID
+  ownerName      String
+  ownerId        String
+  snapshotUrl    String?
+  itemsSnapshot  String   // JSON array of ClothingItem objects at publication time
+  tags           String   // JSON array of tags
+  likesCount     Int      @default(0)
+  bookmarksCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  
+  // Relations
+  look Look @relation(fields: [lookId], references: [id], onDelete: Cascade)
+  
+  @@index([publicId])
+  @@index([createdAt])
+  @@index([likesCount])
+  @@map("public_looks")
+}

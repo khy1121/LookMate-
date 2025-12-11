@@ -83,6 +83,194 @@ Add the same environment variables in your hosting platform's environment settin
 - `publicLookService.ts`: 공개 코디 피드 API
 - `aiService.ts`: AI 배경 제거 API
 
+## Backend Database (Prisma + SQLite)
+
+LookMate는 Prisma ORM과 SQLite를 사용하여 사용자, 옷장, 룩 데이터를 관리합니다.
+
+### 데이터베이스 구조
+
+**도메인 모델:**
+```
+User
+├─ id: string (cuid)
+├─ email: string (unique)
+├─ displayName: string
+├─ avatarUrl: string?
+├─ height: number?
+├─ bodyType: string? ('slim' | 'normal' | 'athletic' | 'chubby')
+├─ gender: string? ('male' | 'female' | 'unisex')
+└─ createdAt: DateTime
+
+ClothingItem
+├─ id: string (cuid)
+├─ userId: string → User.id
+├─ category: string ('top' | 'bottom' | 'outer' | 'onepiece' | 'shoes' | 'accessory')
+├─ imageUrl: string (배경 제거된 이미지)
+├─ originalImageUrl: string
+├─ color: string
+├─ season: string? ('spring' | 'summer' | 'fall' | 'winter')
+├─ brand: string?
+├─ size: string?
+├─ tags: string (JSON array)
+├─ memo: string?
+├─ isFavorite: boolean
+├─ shoppingUrl: string?
+├─ price: number? (원 단위)
+├─ isPurchased: boolean
+└─ createdAt: DateTime
+
+Look
+├─ id: string (cuid)
+├─ userId: string → User.id
+├─ name: string
+├─ itemIds: string (JSON array of ClothingItem IDs)
+├─ layers: string (JSON array of FittingLayer objects)
+├─ snapshotUrl: string?
+├─ isPublic: boolean
+├─ tags: string (JSON array)
+└─ createdAt: DateTime
+
+PublicLook
+├─ id: string (cuid)
+├─ lookId: string → Look.id (unique)
+├─ publicId: string (unique, URL-friendly sharing ID)
+├─ ownerName: string
+├─ ownerId: string
+├─ snapshotUrl: string?
+├─ itemsSnapshot: string (JSON array, snapshot at publication time)
+├─ tags: string (JSON array)
+├─ likesCount: number
+├─ bookmarksCount: number
+└─ createdAt: DateTime
+```
+
+**관계:**
+- User → ClothingItem (1:N)
+- User → Look (1:N)
+- Look → PublicLook (1:1, optional)
+
+### 데이터베이스 설정 및 마이그레이션
+
+**1. 의존성 설치:**
+```bash
+cd backend
+npm install
+```
+
+**2. Prisma 마이그레이션 실행:**
+```bash
+# 데이터베이스 스키마 생성
+npx prisma migrate dev --name init
+
+# Prisma Client 생성
+npx prisma generate
+```
+
+**3. Seed 데이터 추가 (선택):**
+```bash
+# 데모 유저/옷/룩 데이터 생성
+npx prisma db seed
+
+# 또는
+npm run prisma:seed
+```
+
+**Seed 데이터 내용:**
+- 2명의 데모 유저 (demo-user-1, demo-user-2)
+- 8개의 옷 아이템 (다양한 카테고리/브랜드/가격)
+- 3개의 룩 (레이어 정보 포함)
+- 2개의 공개 룩 (좋아요/북마크 수 포함)
+
+**4. 데이터베이스 확인 (선택):**
+```bash
+# Prisma Studio 실행 (GUI 데이터 뷰어)
+npx prisma studio
+```
+브라우저에서 http://localhost:5555 접속하여 데이터 확인/수정 가능
+
+### 데이터 API 엔드포인트
+
+| 엔드포인트 | 메서드 | 설명 | 상태 |
+|-----------|--------|------|------|
+| `/api/data/closet` | GET | 사용자의 옷장 아이템 조회 (`?userId=...`) | ✅ 동작 |
+| `/api/data/looks` | GET | 사용자의 룩 목록 조회 (`?userId=...`) | ✅ 동작 |
+| `/api/data/public-looks` | GET | 공개 룩 피드 조회 (`?limit=20&sort=latest`) | ✅ 동작 |
+
+**사용 예시:**
+```bash
+# 백엔드 서버 실행
+cd backend
+npm run dev
+
+# 다른 터미널에서 API 테스트
+curl "http://localhost:4000/api/data/closet?userId=demo-user-1"
+# → { "items": [...] } 8개 아이템 반환
+
+curl "http://localhost:4000/api/data/looks?userId=demo-user-1"
+# → { "looks": [...] } 2개 룩 반환
+
+curl "http://localhost:4000/api/data/public-looks?limit=10&sort=likes"
+# → { "publicLooks": [...] } 좋아요 순 정렬
+```
+
+**응답 형식:**
+```json
+// GET /api/data/closet
+{
+  "items": [
+    {
+      "id": "item-1",
+      "userId": "demo-user-1",
+      "category": "top",
+      "imageUrl": "...",
+      "color": "white",
+      "brand": "Uniqlo",
+      "price": 15000,
+      "isPurchased": true,
+      "tags": ["casual", "basic"],
+      "createdAt": 1702345678000
+    }
+  ]
+}
+
+// GET /api/data/public-looks
+{
+  "publicLooks": [
+    {
+      "publicId": "summer-casual-2024",
+      "ownerName": "Fashion Lover",
+      "ownerId": "demo-user-1",
+      "snapshotUrl": "...",
+      "items": [...],
+      "likesCount": 42,
+      "bookmarksCount": 18,
+      "tags": ["casual", "summer"],
+      "createdAt": 1702345678000
+    }
+  ]
+}
+```
+
+### 현재 상태 (Step 18)
+
+**✅ 구현 완료:**
+- Prisma 스키마 정의 (4개 모델)
+- SQLite 데이터베이스 마이그레이션
+- Seed 데이터 생성
+- 읽기 전용 REST API 엔드포인트 (GET)
+- Frontend dataService 스켈레톤 (`services/dataService.ts`)
+
+**⏳ 향후 작업 (Step 19+):**
+- 쓰기 API 엔드포인트 (POST/PUT/DELETE)
+- Frontend Zustand 스토어를 localStorage → Backend API로 마이그레이션
+- 인증 토큰 기반 API 인증
+- 실시간 동기화 (WebSocket/Polling)
+
+**⚠️ 중요:**
+- 현재 Frontend는 여전히 **localStorage 기반**으로 동작합니다
+- `services/dataService.ts`는 구현되어 있지만 UI에서 아직 사용하지 않습니다
+- 기존 기능(Steps 1-17)은 모두 정상 작동합니다
+
 ## Backend (AI API Server)
 
 LookMate는 AI 기능(아바타 생성, 배경 제거, 가상 피팅)을 위한 Node.js + Express 백엔드를 제공합니다.
