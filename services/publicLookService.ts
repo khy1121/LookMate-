@@ -1,4 +1,23 @@
 import { PublicLook, ClothingItem, Category } from '../types';
+// import { get } from './apiClient';
+
+/**
+ * TODO: 실제 서비스 전환 시
+ * 
+ * 1. fetchPopularLooks
+ *    - Endpoint: GET /api/public-looks?sort=popular&limit=10
+ *    - Response: PublicLook[]
+ *    - 구현: return get<PublicLook[]>('/api/public-looks?sort=popular&limit=10');
+ * 
+ * 2. fetchLookDetail
+ *    - Endpoint: GET /api/public-looks/:id
+ *    - Response: PublicLook
+ *    - 구현: return get<PublicLook>(`/api/public-looks/${lookId}`);
+ * 
+ * 3. 환경 변수
+ *    - .env.local에 VITE_API_BASE_URL 설정
+ *    - apiClient에서 자동으로 base URL prefix 적용
+ */
 
 // Mock 데이터 생성
 const generateMockPublicLooks = (): PublicLook[] => {

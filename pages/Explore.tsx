@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { PublicLook, Product, ClothingItem } from '../types';
 import { fetchPopularLooks } from '../services/publicLookService';
 import { searchSimilarProductsByItem } from '../services/productService';
+import { useStore } from '../store/useStore';
 
 type SortOption = 'recommend' | 'likes' | 'recent';
+type ProductSortOption = 'recommend' | 'priceAsc' | 'priceDesc' | 'sales';
 
 export const Explore: React.FC = () => {
   const [looks, setLooks] = useState<PublicLook[]>([]);
@@ -13,6 +15,13 @@ export const Explore: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  
+  // Product filters
+  const [productSortBy, setProductSortBy] = useState<ProductSortOption>('recommend');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+
+  const addClothingFromProduct = useStore((s) => s.addClothingFromProduct);
 
   useEffect(() => {
     loadLooks();
@@ -45,6 +54,9 @@ export const Explore: React.FC = () => {
   const handleViewSimilarProducts = async (item: ClothingItem) => {
     setSelectedItem(item);
     setLoadingProducts(true);
+    setProductSortBy('recommend');
+    setMinPrice('');
+    setMaxPrice('');
     try {
       const products = await searchSimilarProductsByItem(item, {
         sortBy: 'recommend',
@@ -56,6 +68,29 @@ export const Explore: React.FC = () => {
     } finally {
       setLoadingProducts(false);
     }
+  };
+
+  const handleRefreshProducts = async () => {
+    if (!selectedItem) return;
+    setLoadingProducts(true);
+    try {
+      const products = await searchSimilarProductsByItem(selectedItem, {
+        sortBy: productSortBy,
+        minPrice: minPrice ? parseInt(minPrice) : undefined,
+        maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
+        limit: 8,
+      });
+      setSimilarProducts(products);
+    } catch (error) {
+      console.error('Failed to search products', error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const handleAddToCloset = (product: Product) => {
+    addClothingFromProduct(product);
+    alert(`"${product.name}"이(가) 옷장에 추가되었습니다!`);
   };
 
   return (
@@ -221,6 +256,54 @@ export const Explore: React.FC = () => {
                       <h4 className="font-bold text-gray-800 mb-3">
                         '{selectedItem.category}' 유사 상품 추천
                       </h4>
+
+                      {/* Price Filters & Sort */}
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+                        <div className="flex flex-wrap gap-3">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">최소 가격:</label>
+                            <input
+                              type="number"
+                              value={minPrice}
+                              onChange={(e) => setMinPrice(e.target.value)}
+                              placeholder="0"
+                              className="w-28 px-3 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                            <span className="text-sm text-gray-500">원</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">최대 가격:</label>
+                            <input
+                              type="number"
+                              value={maxPrice}
+                              onChange={(e) => setMaxPrice(e.target.value)}
+                              placeholder="∞"
+                              className="w-28 px-3 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                            <span className="text-sm text-gray-500">원</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <label className="text-sm text-gray-600">정렬:</label>
+                          <select
+                            value={productSortBy}
+                            onChange={(e) => setProductSortBy(e.target.value as ProductSortOption)}
+                            className="px-3 py-1.5 border border-gray-300 rounded text-sm"
+                          >
+                            <option value="recommend">추천순</option>
+                            <option value="priceAsc">가격 낮은순</option>
+                            <option value="priceDesc">가격 높은순</option>
+                            <option value="sales">판매량순</option>
+                          </select>
+                          <button
+                            onClick={handleRefreshProducts}
+                            className="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition-colors"
+                          >
+                            필터 적용
+                          </button>
+                        </div>
+                      </div>
+
                       {loadingProducts ? (
                         <div className="text-center py-8 text-gray-400">상품 검색 중...</div>
                       ) : (
@@ -234,12 +317,20 @@ export const Explore: React.FC = () => {
                                 <p className="text-sm font-bold text-gray-900 mt-1">
                                   ₩{product.price.toLocaleString()}
                                 </p>
-                                <button
-                                  onClick={() => window.open(product.productUrl, '_blank', 'noopener,noreferrer')}
-                                  className="mt-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-1 rounded transition-colors"
-                                >
-                                  구매하러 가기
-                                </button>
+                                <div className="flex gap-1 mt-2">
+                                  <button
+                                    onClick={() => handleAddToCloset(product)}
+                                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs py-1.5 rounded transition-colors"
+                                  >
+                                    + 옷장에 추가
+                                  </button>
+                                  <button
+                                    onClick={() => window.open(product.productUrl, '_blank', 'noopener,noreferrer')}
+                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-1.5 rounded transition-colors"
+                                  >
+                                    구매하기
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ))}

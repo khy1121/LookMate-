@@ -1,4 +1,29 @@
 import { Product, ClothingItem, Category, ImageSearchResult } from '../types';
+// import { post, upload } from './apiClient';
+
+/**
+ * TODO: 실제 서비스 전환 시
+ * 
+ * 1. searchSimilarProductsByItem
+ *    - Endpoint: POST /api/products/similar-by-item
+ *    - Request Body: { itemId, category, options }
+ *    - Response: Product[]
+ *    - 구현: return post<Product[]>('/api/products/similar-by-item', { itemId, category, options });
+ * 
+ * 2. searchSimilarProductsByImage
+ *    - Endpoint: POST /api/products/similar-by-image (multipart or base64)
+ *    - Request: FormData with image file
+ *    - Response: ImageSearchResult
+ *    - 구현: 
+ *      const formData = new FormData();
+ *      formData.append('image', imageFile);
+ *      formData.append('options', JSON.stringify(options));
+ *      return upload<ImageSearchResult>('/api/products/similar-by-image', formData);
+ * 
+ * 3. 환경 변수
+ *    - .env.local에 VITE_API_BASE_URL 설정
+ *    - apiClient에서 자동으로 base URL prefix 적용
+ */
 
 export interface ProductSearchOptions {
   category?: Category;

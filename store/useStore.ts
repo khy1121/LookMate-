@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, ClothingItem, Look, ActiveLook, FittingLayer, Season } from '../types';
+import { User, ClothingItem, Look, ActiveLook, FittingLayer, Season, Product, Category } from '../types';
 
 // LocalStorage Helper
 const getLocalStorage = <T>(key: string, initial: T): T => {
@@ -34,6 +34,7 @@ interface AppState {
   removeClothing: (id: string) => void;
   toggleFavorite: (id: string) => void;
   updateClothing: (id: string, patch: Partial<ClothingItem>) => void;
+  addClothingFromProduct: (product: Product, override?: Partial<ClothingItem>) => void;
 
   // Look State (New)
   looks: Look[];
@@ -112,6 +113,46 @@ export const useStore = create<AppState>((set, get) => ({
       const newClothes = state.clothes.map((c) =>
         c.id === id ? { ...c, ...patch } : c
       );
+      setLocalStorage('clothes', newClothes);
+      return { clothes: newClothes };
+    }),
+
+  addClothingFromProduct: (product, override) =>
+    set((state) => {
+      if (!state.user) return {};
+
+      // Extract color from tags (simple heuristic)
+      const colorKeywords = ['black', 'white', 'red', 'blue', 'green', 'yellow', 'pink', 'purple', 'gray', 'brown', 'navy', 'beige'];
+      let color = 'unknown';
+      if (product.tags) {
+        const foundColor = product.tags.find((tag) =>
+          colorKeywords.some((keyword) => tag.toLowerCase().includes(keyword))
+        );
+        if (foundColor) color = foundColor;
+      }
+
+      // Map Product → ClothingItem
+      const newItem: ClothingItem = {
+        id: crypto.randomUUID(),
+        userId: state.user.id,
+        imageUrl: product.thumbnailUrl,
+        originalImageUrl: product.thumbnailUrl,
+        category: (product.category as Category) ?? 'top',
+        color,
+        brand: product.brand ?? undefined,
+        size: undefined,
+        season: undefined,
+        memo: `${product.name}`,
+        isFavorite: false,
+        createdAt: Date.now(),
+        shoppingUrl: product.productUrl,
+        price: product.price,
+        isPurchased: false, // 기본값: 관심상품
+        // Apply overrides
+        ...override,
+      };
+
+      const newClothes = [newItem, ...state.clothes];
       setLocalStorage('clothes', newClothes);
       return { clothes: newClothes };
     }),

@@ -61,6 +61,17 @@ export interface Look {
 
 // --- Product & Public Look Types ---
 
+/**
+ * Product → ClothingItem 매핑 규칙:
+ * - category: product.category ?? 'top' (기본값)
+ * - shoppingUrl: product.productUrl
+ * - price: product.price
+ * - brand: product.brand ?? undefined
+ * - tags: product.tags ?? []
+ * - color: product.tags 중 색상 추출, 없으면 'unknown'
+ * - isPurchased: false (기본값, 관심상품으로 저장)
+ * - imageUrl/originalImageUrl: product.thumbnailUrl
+ */
 export interface Product {
   id: string;
   name: string;

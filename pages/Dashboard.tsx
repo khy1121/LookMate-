@@ -146,8 +146,8 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-lg font-bold text-gray-800 mb-2">🌐 인기 코디 둘러보기</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                다른 사람들의 코디를 보고 쇼핑 아이디어를 얻어보세요.
+              <p className="text-sm text-gray-600 mb-3">
+                인기 코디에서 유사 상품을 찾고, 내 옷장에 바로 추가해보세요.
               </p>
               <button
                 onClick={() => navigate('/app/explore')}
@@ -163,8 +163,8 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-lg font-bold text-gray-800 mb-2">📷 이미지로 유사 상품 찾기</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                마음에 드는 옷 사진을 업로드하면 비슷한 상품을 찾아드려요.
+              <p className="text-sm text-gray-600 mb-3">
+                스크린샷만 올리면 비슷한 상품을 찾고, 한 번에 옷장에 담을 수 있어요.
               </p>
               <button
                 onClick={() => navigate('/app/discover')}
