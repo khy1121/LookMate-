@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
 
 export const Fitting: React.FC = () => {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ export const Fitting: React.FC = () => {
   
   // Local state for Look Name input
   const [lookName, setLookName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
 
   // activeLook이 바뀌거나 로드되면 이름을 동기화
   useEffect(() => {
@@ -27,7 +30,7 @@ export const Fitting: React.FC = () => {
     }
   }, [activeLook?.name]);
 
-  const handleSaveLook = () => {
+  const handleSaveLook = async () => {
     if (!activeLook || layers.length === 0) {
       alert('저장할 코디가 없습니다.');
       return;
@@ -36,8 +39,35 @@ export const Fitting: React.FC = () => {
       alert('코디 이름을 입력해주세요.');
       return;
     }
-    createLookFromActive(lookName);
-    alert('현재 코디가 저장되었습니다! 💾');
+
+    if (!canvasRef.current) {
+      // 캔버스 ref를 못 찾으면 snapshot 없이 저장
+      createLookFromActive(lookName.trim(), null);
+      setLookName('');
+      alert('현재 코디가 저장되었습니다! 💾');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const canvas = await html2canvas(canvasRef.current, {
+        backgroundColor: null,
+        useCORS: true,
+        scale: 2, // 고해상도 캡처
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      createLookFromActive(lookName.trim(), dataUrl);
+      setLookName('');
+      alert('현재 코디가 저장되었습니다! 💾');
+    } catch (err) {
+      console.error('스냅샷 생성 실패', err);
+      // 실패 시에도 최소한 데이터는 저장되도록 fallback
+      createLookFromActive(lookName.trim(), null);
+      setLookName('');
+      alert('코디가 저장되었습니다 (미리보기 생성 실패)');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -46,7 +76,7 @@ export const Fitting: React.FC = () => {
       {/* 1. Canvas Area (Left) */}
       <div className="flex-1 bg-gray-100 rounded-3xl shadow-inner border border-gray-200 overflow-hidden relative flex items-center justify-center min-h-[50vh] lg:h-auto">
         {/* Avatar Container with fixed aspect ratio */}
-        <div className="relative w-full max-w-md aspect-[3/4] bg-white shadow-xl rounded-lg overflow-hidden group">
+        <div ref={canvasRef} className="relative w-full max-w-md aspect-[3/4] bg-white shadow-xl rounded-lg overflow-hidden group">
           
           {/* Avatar Base Layer */}
           {user?.avatarUrl ? (
@@ -113,9 +143,10 @@ export const Fitting: React.FC = () => {
             />
             <button 
               onClick={handleSaveLook}
-              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black transition-colors"
+              disabled={saving}
+              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              저장
+              {saving ? '저장 중...' : '저장'}
             </button>
           </div>
           <div className="flex justify-between items-center text-xs text-gray-500 pt-2 border-t border-gray-50">

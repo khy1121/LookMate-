@@ -36,7 +36,7 @@ interface AppState {
 
   // Look State (New)
   looks: Look[];
-  createLookFromActive: (name: string) => void;
+  createLookFromActive: (name: string, snapshotUrl?: string | null) => void;
   deleteLook: (id: string) => void;
   setActiveLookFromLook: (id: string) => void;
 
@@ -100,7 +100,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   // Looks
   looks: getLocalStorage<Look[]>('looks', []),
-  createLookFromActive: (name) =>
+  createLookFromActive: (name, snapshotUrl) =>
     set((state) => {
       if (!state.user || !state.activeLook) return {};
 
@@ -116,7 +116,7 @@ export const useStore = create<AppState>((set, get) => ({
         // Deep copy layers to prevent reference issues
         layers: state.activeLook.layers.map(l => ({ ...l })),
         createdAt: Date.now(),
-        snapshotUrl: null,
+        snapshotUrl: snapshotUrl || null,
       };
 
       const newLooks = [newLook, ...state.looks];

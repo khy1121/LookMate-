@@ -61,6 +61,20 @@ export const Dashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {looks.map((look) => (
               <div key={look.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-md transition-shadow">
+                
+                {/* Snapshot Thumbnail */}
+                <div className="mb-3 aspect-[3/4] rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                  {look.snapshotUrl ? (
+                    <img
+                      src={look.snapshotUrl}
+                      alt={look.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-400">미리보기 없음</span>
+                  )}
+                </div>
+
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h4 className="font-bold text-gray-800 text-lg">{look.name}</h4>
