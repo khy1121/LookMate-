@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="LookMate Banner" src="C:\LookMate\config\branding\lookmate-logo-neon.png"/>
+<img width="1200" height="475" alt="LookMate Banner" src="C:\LookMate\public\branding\lookmate-logo-neon.png"/>
 </div>
 
 # LookMate - AI 가상 피팅 & 쇼핑 어시스턴트
