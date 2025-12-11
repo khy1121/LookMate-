@@ -11,6 +11,7 @@ import { Fitting } from './pages/Fitting';
 import { Explore } from './pages/Explore';
 import { Discover } from './pages/Discover';
 import { LookDetail } from './pages/LookDetail';
+import { NotFound } from './pages/NotFound';
 import { useStore } from './store/useStore';
 
 export const App = () => {
@@ -46,8 +47,8 @@ export const App = () => {
         <Route path="discover" element={<Discover />} />
       </Route>
       
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 404 Not Found - Catch All */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

@@ -10,25 +10,65 @@ View your app in AI Studio: https://ai.studio/apps/drive/1sDBGj5dWh2GXiA7X8fL_as
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js (v18 or higher recommended)
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+
+2. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Then edit `.env.local` with your actual API keys (currently using Mock data)
+
+3. Run development server:
+   ```bash
+   npm run dev
+   ```
+   App will be available at `http://localhost:3001`
+
+## Build & Preview
+
+**Build for production:**
+```bash
+npm run build
+```
+
+**Preview production build locally:**
+```bash
+npm run preview
+```
+App will be available at `http://localhost:4173`
+
+**Type checking:**
+```bash
+npm run lint
+```
 
 ## Environment Variables
 
-Create a `.env.local` file in the root directory:
+Create a `.env.local` file in the root directory (see `.env.example` for template):
 
 ```env
-# Gemini API Key (현재 사용 중)
-GEMINI_API_KEY=your_gemini_api_key_here
+# Application Configuration
+VITE_APP_NAME=LookMate
+VITE_APP_ENV=development
 
-# Backend API Base URL (실제 서비스 전환 시 설정)
-# VITE_API_BASE_URL=https://api.lookmate.com
+# API Configuration (Mock for now)
+VITE_API_BASE_URL=https://api.example.com
+
+# Future: Real API Keys (not yet required)
+# GEMINI_API_KEY=your_gemini_api_key_here
+# VITE_OPENAI_API_KEY=your_openai_key_here
+# VITE_REMOVEBG_API_KEY=your_removebg_key_here
 ```
+
+**For Vercel/Netlify deployment:**
+Add the same environment variables in your hosting platform's environment settings:
+- Vercel: Project Settings → Environment Variables
+- Netlify: Site Settings → Build & Deploy → Environment
 
 ### API 전환 가이드
 
