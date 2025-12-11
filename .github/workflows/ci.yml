@@ -23,14 +23,20 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     
-    - name: Install dependencies
+    - name: Install frontend dependencies
       run: npm ci
     
-    - name: Type check
+    - name: Type check (frontend)
       run: npm run lint
     
-    - name: Build
+    - name: Build frontend
       run: npm run build
+    
+    - name: Install backend dependencies
+      run: cd backend && npm ci
+    
+    - name: Build backend (type check)
+      run: cd backend && npm run build
     
     - name: Upload build artifacts (Node 20 only)
       if: matrix.node-version == '20.x'

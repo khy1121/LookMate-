@@ -12,6 +12,7 @@ interface LookCardProps {
   itemCount?: number;
   createdAt?: number;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export const LookCard: React.FC<LookCardProps> = ({ 
@@ -24,7 +25,8 @@ export const LookCard: React.FC<LookCardProps> = ({
   footerSlot,
   itemCount,
   createdAt,
-  className = ''
+  className = '',
+  children
 }) => {
   const CardWrapper = onClick ? 'button' : 'div';
   const interactiveClass = onClick 
@@ -58,6 +60,9 @@ export const LookCard: React.FC<LookCardProps> = ({
         <h4 className="font-bold text-gray-800 text-sm mb-2 truncate">
           {name}
         </h4>
+
+        {/* Children (custom content) */}
+        {children}
 
         {/* Stats */}
         {(likesCount !== undefined || bookmarksCount !== undefined || itemCount !== undefined) && (

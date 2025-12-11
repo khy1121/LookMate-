@@ -12,11 +12,37 @@
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '';
 
 /**
- * Generic GET request
+ * URL에 쿼리 파라미터를 추가하는 헬퍼 함수
  */
-export async function get<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
+function buildUrlWithParams(
+  baseUrl: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  if (!params || Object.keys(params).length === 0) return baseUrl;
+  
+  const usp = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    usp.append(key, String(value));
+  });
+  
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}${usp.toString()}`;
+}
+
+/**
+ * Generic GET request with optional query parameters
+ */
+export async function get<T>(
+  path: string,
+  options?: {
+    params?: Record<string, string | number | boolean>;
+    init?: RequestInit;
+  }
+): Promise<T> {
+  const url = buildUrlWithParams(`${API_BASE_URL}${path}`, options?.params);
+  
+  const res = await fetch(url, {
+    ...options?.init,
     method: 'GET',
   });
   
