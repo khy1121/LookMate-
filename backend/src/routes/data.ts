@@ -5,13 +5,13 @@ const router = express.Router();
 
 /**
  * GET /api/data/closet
- * Fetch all clothing items for a user
+ * 사용자의 모든 옷장 아이템 조회
  * 
  * Query params:
- *   - userId (required): User ID
+ *   - userId (required): 사용자 ID
  * 
  * Response:
- *   - items: ClothingItem[] (compatible with frontend types)
+ *   - items: ClothingItem[] (frontend 타입과 호환)
  */
 router.get('/closet', async (req: Request, res: Response) => {
   try {
@@ -29,7 +29,7 @@ router.get('/closet', async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Transform DB model to frontend-compatible format
+    // DB 모델을 frontend 호환 형식으로 변환
     const formattedItems = items.map(item => ({
       id: item.id,
       userId: item.userId,
@@ -60,13 +60,13 @@ router.get('/closet', async (req: Request, res: Response) => {
 
 /**
  * GET /api/data/looks
- * Fetch all looks for a user
+ * 사용자의 모든 룩 조회
  * 
  * Query params:
- *   - userId (required): User ID
+ *   - userId (required): 사용자 ID
  * 
  * Response:
- *   - looks: Look[] (includes snapshotUrl, items, layers)
+ *   - looks: Look[] (snapshotUrl, items, layers 포함)
  */
 router.get('/looks', async (req: Request, res: Response) => {
   try {
@@ -84,21 +84,21 @@ router.get('/looks', async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Get all unique item IDs from all looks
+    // 모든 룩에서 고유 아이템 ID 추출
     const allItemIds = new Set<string>();
     looks.forEach(look => {
       const itemIds = JSON.parse(look.itemIds);
       itemIds.forEach((id: string) => allItemIds.add(id));
     });
 
-    // Fetch all items in one query
+    // 한 번의 쿼리로 모든 아이템 조회
     const items = await prisma.clothingItem.findMany({
       where: { id: { in: Array.from(allItemIds) } },
     });
 
     const itemsMap = new Map(items.map(item => [item.id, item]));
 
-    // Transform DB model to frontend-compatible format
+    // DB 모델을 frontend 호환 형식으로 변환
     const formattedLooks = looks.map(look => {
       const itemIds = JSON.parse(look.itemIds);
       const lookItems = itemIds.map((id: string) => {
@@ -150,11 +150,11 @@ router.get('/looks', async (req: Request, res: Response) => {
 
 /**
  * GET /api/data/public-looks
- * Fetch public looks feed
+ * 공개 룩 피드 조회
  * 
  * Query params:
- *   - limit (optional): Number of looks to return (default: 20)
- *   - sort (optional): 'likes' | 'latest' (default: 'latest')
+ *   - limit (optional): 반환할 룩 개수 (기본값: 20)
+ *   - sort (optional): 'likes' | 'latest' (기본값: 'latest')
  * 
  * Response:
  *   - publicLooks: PublicLook[]
@@ -176,7 +176,7 @@ router.get('/public-looks', async (req: Request, res: Response) => {
       orderBy,
     });
 
-    // Transform DB model to frontend-compatible format
+    // DB 모델을 frontend 호환 형식으로 변환
     const formattedLooks = publicLooks.map(pl => ({
       publicId: pl.publicId,
       name: '', // Not stored in PublicLook, could join with Look if needed

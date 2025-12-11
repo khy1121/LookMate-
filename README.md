@@ -1,444 +1,272 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+<img width="1200" height="475" alt="LookMate Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# LookMate - AI 가상 피팅 & 쇼핑 어시스턴트
 
-This contains everything you need to run your app locally.
+AI 기술을 활용한 개인 맞춤형 패션 코디 및 가상 피팅 서비스입니다.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1sDBGj5dWh2GXiA7X8fL_asvyroC3M2Tp
+## 주요 기능
 
-## Run Locally
+- **옷장 관리**: 보유한 옷을 촬영하여 디지털 옷장에 저장 및 관리
+- **AI 배경 제거**: 업로드한 옷 이미지의 배경을 자동으로 제거
+- **아바타 생성**: 얼굴 사진과 신체 정보로 3D 아바타 생성
+- **가상 피팅**: 아바타에 옷을 입혀보고 레이어 조정으로 스타일링
+- **코디 저장 & 공유**: 완성된 룩을 저장하고 다른 사용자와 공유
+- **인기 코디 탐색**: 다른 사용자들의 공개 코디 피드 탐색
+- **이미지 검색**: 옷 사진으로 유사한 상품 찾기
+- **외부 상품 연동**: 쇼핑몰 상품을 원클릭으로 내 옷장에 추가
 
-**Prerequisites:** Node.js (v18 or higher recommended)
+## 기술 스택
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Frontend
+- **Framework**: React 18 + TypeScript + Vite
+- **상태 관리**: Zustand (localStorage 기반)
+- **스타일링**: Tailwind CSS
+- **라우팅**: React Router v6
+- **빌드**: Vite 6.x
 
-2. Set up environment variables:
-   ```bash
-   cp .env.example .env.local
-   ```
-   Then edit `.env.local` with your actual API keys (currently using Mock data)
+### Backend
+- **Runtime**: Node.js + Express
+- **언어**: TypeScript
+- **데이터베이스**: SQLite + Prisma ORM
+- **파일 업로드**: Multer (multipart/form-data)
+- **AI API**: Stub 구현 (실제 모델 연동 준비 완료)
 
-3. Run development server:
-   ```bash
-   npm run dev
-   ```
-   App will be available at `http://localhost:3001`
+## 로컬 개발 환경 설정
 
-## Build & Preview
+### 필수 요구사항
 
-**Build for production:**
-```bash
-npm run build
-```
+- **Node.js**: v18 이상 권장
+- **npm**: v9 이상
 
-**Preview production build locally:**
-```bash
-npm run preview
-```
-App will be available at `http://localhost:4173`
-
-**Type checking:**
-```bash
-npm run lint
-```
-
-## Environment Variables
-
-Create a `.env.local` file in the root directory (see `.env.example` for template):
-
-```env
-# Application Configuration
-VITE_APP_NAME=LookMate
-VITE_APP_ENV=development
-
-# API Configuration (Mock for now)
-VITE_API_BASE_URL=https://api.example.com
-
-# Future: Real API Keys (not yet required)
-# GEMINI_API_KEY=your_gemini_api_key_here
-# VITE_OPENAI_API_KEY=your_openai_key_here
-# VITE_REMOVEBG_API_KEY=your_removebg_key_here
-```
-
-**For Vercel/Netlify deployment:**
-Add the same environment variables in your hosting platform's environment settings:
-- Vercel: Project Settings → Environment Variables
-- Netlify: Site Settings → Build & Deploy → Environment
-
-### API 전환 가이드
-
-현재 모든 서비스는 Mock 데이터를 사용하고 있습니다. 실제 백엔드 API로 전환하려면:
-
-1. `.env.local`에 `VITE_API_BASE_URL` 설정
-2. `services/apiClient.ts`의 주석 참고하여 API 엔드포인트 연동
-3. `services/productService.ts`와 `services/publicLookService.ts`의 TODO 주석 참고
-
-**전환이 필요한 서비스:**
-- `productService.ts`: 상품 검색 API
-- `publicLookService.ts`: 공개 코디 피드 API
-- `aiService.ts`: AI 배경 제거 API
-
-## Backend Database (Prisma + SQLite)
-
-LookMate는 Prisma ORM과 SQLite를 사용하여 사용자, 옷장, 룩 데이터를 관리합니다.
-
-### 데이터베이스 구조
-
-**도메인 모델:**
-```
-User
-├─ id: string (cuid)
-├─ email: string (unique)
-├─ displayName: string
-├─ avatarUrl: string?
-├─ height: number?
-├─ bodyType: string? ('slim' | 'normal' | 'athletic' | 'chubby')
-├─ gender: string? ('male' | 'female' | 'unisex')
-└─ createdAt: DateTime
-
-ClothingItem
-├─ id: string (cuid)
-├─ userId: string → User.id
-├─ category: string ('top' | 'bottom' | 'outer' | 'onepiece' | 'shoes' | 'accessory')
-├─ imageUrl: string (배경 제거된 이미지)
-├─ originalImageUrl: string
-├─ color: string
-├─ season: string? ('spring' | 'summer' | 'fall' | 'winter')
-├─ brand: string?
-├─ size: string?
-├─ tags: string (JSON array)
-├─ memo: string?
-├─ isFavorite: boolean
-├─ shoppingUrl: string?
-├─ price: number? (원 단위)
-├─ isPurchased: boolean
-└─ createdAt: DateTime
-
-Look
-├─ id: string (cuid)
-├─ userId: string → User.id
-├─ name: string
-├─ itemIds: string (JSON array of ClothingItem IDs)
-├─ layers: string (JSON array of FittingLayer objects)
-├─ snapshotUrl: string?
-├─ isPublic: boolean
-├─ tags: string (JSON array)
-└─ createdAt: DateTime
-
-PublicLook
-├─ id: string (cuid)
-├─ lookId: string → Look.id (unique)
-├─ publicId: string (unique, URL-friendly sharing ID)
-├─ ownerName: string
-├─ ownerId: string
-├─ snapshotUrl: string?
-├─ itemsSnapshot: string (JSON array, snapshot at publication time)
-├─ tags: string (JSON array)
-├─ likesCount: number
-├─ bookmarksCount: number
-└─ createdAt: DateTime
-```
-
-**관계:**
-- User → ClothingItem (1:N)
-- User → Look (1:N)
-- Look → PublicLook (1:1, optional)
-
-### 데이터베이스 설정 및 마이그레이션
+### Frontend 설정
 
 **1. 의존성 설치:**
 ```bash
-cd backend
 npm install
 ```
 
-**2. Prisma 마이그레이션 실행:**
+**2. 환경 변수 설정:**
 ```bash
-# 데이터베이스 스키마 생성
+# 루트 디렉토리에 .env.local 파일 생성
+cp .env.example .env.local
+```
+
+`.env.local` 파일 예시:
+```env
+# AI 백엔드 API (선택 사항, 없으면 Mock 모드)
+VITE_API_BASE_URL=http://localhost:4000
+
+# 애플리케이션 설정
+VITE_APP_NAME=LookMate
+VITE_APP_ENV=development
+```
+
+**3. 개발 서버 실행:**
+```bash
+npm run dev
+```
+→ http://localhost:3001 에서 실행됩니다.
+
+**4. 프로덕션 빌드:**
+```bash
+npm run build    # dist/ 폴더에 빌드 결과 생성
+npm run preview  # http://localhost:4173 에서 미리보기
+```
+
+### Backend 설정
+
+**1. 백엔드 디렉토리 이동:**
+```bash
+cd backend
+```
+
+**2. 의존성 설치:**
+```bash
+npm install
+```
+
+**3. 환경 변수 설정:**
+```bash
+# backend/.env 파일이 자동 생성됨
+# 필요시 backend/.env.example 참고
+```
+
+`backend/.env` 예시:
+```env
+DATABASE_URL="file:./dev.db"
+PORT=4000
+NODE_ENV=development
+```
+
+**4. 데이터베이스 초기화:**
+```bash
+# Prisma 마이그레이션 실행
 npx prisma migrate dev --name init
 
 # Prisma Client 생성
 npx prisma generate
-```
 
-**3. Seed 데이터 추가 (선택):**
-```bash
-# 데모 유저/옷/룩 데이터 생성
+# (선택) 데모 데이터 추가
 npx prisma db seed
-
-# 또는
-npm run prisma:seed
 ```
 
-**Seed 데이터 내용:**
-- 2명의 데모 유저 (demo-user-1, demo-user-2)
-- 8개의 옷 아이템 (다양한 카테고리/브랜드/가격)
-- 3개의 룩 (레이어 정보 포함)
-- 2개의 공개 룩 (좋아요/북마크 수 포함)
-
-**4. 데이터베이스 확인 (선택):**
+**5. 개발 서버 실행:**
 ```bash
-# Prisma Studio 실행 (GUI 데이터 뷰어)
+npm run dev
+```
+→ http://localhost:4000 에서 실행됩니다.
+
+**6. 데이터베이스 확인 (선택):**
+```bash
 npx prisma studio
 ```
-브라우저에서 http://localhost:5555 접속하여 데이터 확인/수정 가능
+→ http://localhost:5555 에서 GUI로 데이터 확인 가능
 
-### 데이터 API 엔드포인트
+## 데이터베이스 구조
 
-| 엔드포인트 | 메서드 | 설명 | 상태 |
-|-----------|--------|------|------|
-| `/api/data/closet` | GET | 사용자의 옷장 아이템 조회 (`?userId=...`) | ✅ 동작 |
-| `/api/data/looks` | GET | 사용자의 룩 목록 조회 (`?userId=...`) | ✅ 동작 |
-| `/api/data/public-looks` | GET | 공개 룩 피드 조회 (`?limit=20&sort=latest`) | ✅ 동작 |
+**주요 모델:**
 
-**사용 예시:**
-```bash
-# 백엔드 서버 실행
-cd backend
-npm run dev
+- **User**: 사용자 계정 (이메일, 닉네임, 아바타, 신체 정보)
+- **ClothingItem**: 옷 아이템 (카테고리, 색상, 브랜드, 가격, 구매 여부 등)
+- **Look**: 코디 (아이템 조합, 레이어 정보, 스냅샷)
+- **PublicLook**: 공개 코디 (좋아요, 북마크 수, 공유 ID)
 
-# 다른 터미널에서 API 테스트
-curl "http://localhost:4000/api/data/closet?userId=demo-user-1"
-# → { "items": [...] } 8개 아이템 반환
+**관계:**
+- User → ClothingItem (1:N)
+- User → Look (1:N)
+- Look → PublicLook (1:1, 선택적)
 
-curl "http://localhost:4000/api/data/looks?userId=demo-user-1"
-# → { "looks": [...] } 2개 룩 반환
+자세한 스키마는 `backend/prisma/schema.prisma`를 참고하세요.
 
-curl "http://localhost:4000/api/data/public-looks?limit=10&sort=likes"
-# → { "publicLooks": [...] } 좋아요 순 정렬
-```
+## AI 백엔드 (Stub 구현)
 
-**응답 형식:**
-```json
-// GET /api/data/closet
-{
-  "items": [
-    {
-      "id": "item-1",
-      "userId": "demo-user-1",
-      "category": "top",
-      "imageUrl": "...",
-      "color": "white",
-      "brand": "Uniqlo",
-      "price": 15000,
-      "isPurchased": true,
-      "tags": ["casual", "basic"],
-      "createdAt": 1702345678000
-    }
-  ]
-}
-
-// GET /api/data/public-looks
-{
-  "publicLooks": [
-    {
-      "publicId": "summer-casual-2024",
-      "ownerName": "Fashion Lover",
-      "ownerId": "demo-user-1",
-      "snapshotUrl": "...",
-      "items": [...],
-      "likesCount": 42,
-      "bookmarksCount": 18,
-      "tags": ["casual", "summer"],
-      "createdAt": 1702345678000
-    }
-  ]
-}
-```
-
-### 현재 상태 (Step 18)
-
-**✅ 구현 완료:**
-- Prisma 스키마 정의 (4개 모델)
-- SQLite 데이터베이스 마이그레이션
-- Seed 데이터 생성
-- 읽기 전용 REST API 엔드포인트 (GET)
-- Frontend dataService 스켈레톤 (`services/dataService.ts`)
-
-**⏳ 향후 작업 (Step 19+):**
-- 쓰기 API 엔드포인트 (POST/PUT/DELETE)
-- Frontend Zustand 스토어를 localStorage → Backend API로 마이그레이션
-- 인증 토큰 기반 API 인증
-- 실시간 동기화 (WebSocket/Polling)
-
-**⚠️ 중요:**
-- 현재 Frontend는 여전히 **localStorage 기반**으로 동작합니다
-- `services/dataService.ts`는 구현되어 있지만 UI에서 아직 사용하지 않습니다
-- 기존 기능(Steps 1-17)은 모두 정상 작동합니다
-
-## Backend (AI API Server)
-
-LookMate는 AI 기능(아바타 생성, 배경 제거, 가상 피팅)을 위한 Node.js + Express 백엔드를 제공합니다.
-
-### 백엔드 설치 및 실행
-
-**1. 백엔드 의존성 설치:**
-```bash
-cd backend
-npm install
-```
-
-**2. 백엔드 개발 서버 실행:**
-```bash
-npm run dev   # http://localhost:4000에서 실행
-```
-
-서버 실행 확인:
-- 터미널에 "🚀 LookMate AI Backend running on http://localhost:4000" 메시지가 표시됨
-- Health check: `http://localhost:4000/health` 브라우저로 접속 → `{"status":"ok","timestamp":"..."}` 응답 확인
-
-### 프론트엔드와 연동
-
-**1. 루트 디렉토리의 `.env.local` 파일 생성/수정:**
-```env
-VITE_API_BASE_URL=http://localhost:4000
-```
-
-**2. 프론트엔드 개발 서버 (재)실행:**
-```bash
-npm run dev   # 루트 디렉토리에서
-```
-
-**3. 연동 확인:**
-- Avatar 페이지 상단에 "✅ AI 모드: 백엔드 연결" 녹색 배지 표시
-- Upload 페이지에서 옷 이미지 업로드 시 `POST /api/ai/remove-background` 호출 (Network 탭 확인)
-- Avatar 페이지에서 아바타 생성 시 `POST /api/ai/avatar` 호출 확인
+현재 AI 기능은 **Stub 구현** 상태입니다. 실제 AI 모델은 연동되어 있지 않지만, API 계약(Contract)은 정의되어 있어 언제든 실제 모델로 교체 가능합니다.
 
 ### AI API 엔드포인트
 
-| 엔드포인트 | 메서드 | 입력 | 출력 | 상태 |
-|-----------|--------|------|------|------|
-| `/health` | GET | - | `{"status":"ok","timestamp":"..."}` | ✅ 동작 |
-| `/api/ai/avatar` | POST | multipart: `faceImage`, `height`, `bodyType`, `gender` | `{"avatarUrl": string, "meta": {...}}` | **Stub** |
-| `/api/ai/remove-background` | POST | multipart: `clothImage` | `{"imageUrl": string, "meta": {...}}` | **Stub** |
-| `/api/ai/try-on` | POST | JSON: `avatarImageUrl`, `clothingImageUrls[]` | `{"tryOnImageUrl": string, "meta": {...}}` | **Stub** |
-| `/uploads/*` | GET | - | Static file serving | ✅ 동작 |
+| 엔드포인트 | 기능 | 상태 |
+|-----------|------|------|
+| `POST /api/ai/remove-background` | 옷 이미지 배경 제거 | Stub (파일 저장 후 URL 반환) |
+| `POST /api/ai/avatar` | 얼굴 사진으로 아바타 생성 | Stub (업로드 파일 URL 반환) |
+| `POST /api/ai/try-on` | 가상 피팅 이미지 생성 | Stub (향후 확장용) |
+| `GET /uploads/*` | 업로드 파일 정적 제공 | ✅ 동작 |
 
-### Stub 동작 방식 (현재 구현)
+### Mock 모드 vs Backend 모드
 
-**현재 백엔드는 실제 AI 처리 없이 다음과 같이 동작합니다:**
-
-1. **파일 업로드 처리 (✅ 실제 동작)**
-   - `backend/uploads/` 폴더에 이미지 저장
-   - 파일명: `YYYYMMDDHHMMSS-random-originalname.ext`
-   - 이미지 파일만 허용 (mime type 검증)
-   - 최대 크기: 5MB
-
-2. **배경 제거 (`/api/ai/remove-background`)**
-   - **현재**: 업로드된 원본 이미지 URL 반환
-   - **향후**: remove.bg API 또는 U-2-Net 모델 연동
-   - 응답 예시: `{"imageUrl": "http://localhost:4000/uploads/20241212024556-abc123-tshirt.jpg"}`
-
-3. **아바타 생성 (`/api/ai/avatar`)**
-   - **현재**: 업로드된 얼굴 이미지 URL 반환
-   - **향후**: DALL-E/Stable Diffusion으로 전신 아바타 생성
-   - 응답 예시: `{"avatarUrl": "http://localhost:4000/uploads/20241212024601-def456-face.jpg", "meta": {"height": 170, "bodyType": "normal"}}`
-
-4. **가상 피팅 (`/api/ai/try-on`)**
-   - **현재**: 입력받은 아바타 URL 그대로 반환
-   - **향후**: VITON-HD 등 GAN 기반 가상 피팅 모델 연동
-
-### Mock 모드 (백엔드 없이 사용)
-
-`.env.local`에서 `VITE_API_BASE_URL`을 주석 처리하거나 삭제하면:
-- 프론트엔드가 자동으로 Mock 모드로 전환
-- Avatar 페이지에 "💡 AI 모드: Mock" 회색 배지 표시
-- 모든 기능이 브라우저 내에서 동작 (백엔드 불필요)
+**Mock 모드 (기본):**
+- `.env.local`에 `VITE_API_BASE_URL` 미설정 시 자동 활성화
+- 모든 기능이 브라우저에서만 동작 (백엔드 불필요)
 - 배경 제거: `URL.createObjectURL()` 사용
-- 아바타 생성: placeholder 이미지 사용
+- 아바타: placeholder 이미지 사용
 
-### 에러 처리 및 Fallback
+**Backend 모드:**
+- `.env.local`에 `VITE_API_BASE_URL=http://localhost:4000` 설정
+- Avatar/Upload 페이지에서 백엔드 API 호출
+- 파일이 `backend/uploads/` 폴더에 실제 저장됨
+- 에러 시 자동으로 Mock 모드로 Fallback
 
-백엔드가 실행 중이지 않거나 에러 발생 시:
-- 자동으로 Mock 모드로 fallback
-- 화면 우측 상단에 Toast 알림: "AI 서버와 통신할 수 없어 Mock 모드로 동작합니다"
-- 기존 기능 모두 정상 동작 (사용자 경험 중단 없음)
+### 실제 AI 모델 통합 방법
 
-### 빌드 및 배포
+`backend/src/routes/ai.ts` 파일의 TODO 주석을 참고하여 다음 API로 교체 가능합니다:
 
-**백엔드 빌드:**
+- **배경 제거**: [remove.bg API](https://www.remove.bg/api) 또는 U-2-Net 모델
+- **아바타 생성**: OpenAI DALL-E, Stable Diffusion
+- **가상 피팅**: VITON-HD, HR-VITON (GPU 서버 필요)
+
+## 배포
+
+### Vercel / Netlify 배포
+
+**1. SPA Routing 설정:**
+- Vercel: `vercel.json` 파일 포함됨 (자동 적용)
+- Netlify: `public/_redirects` 파일 포함됨 (자동 적용)
+
+**2. 환경 변수 설정:**
+호스팅 플랫폼의 환경 변수 설정에서 다음 추가:
+```
+VITE_API_BASE_URL=https://your-backend-api.com
+VITE_APP_NAME=LookMate
+VITE_APP_ENV=production
+```
+
+**3. 빌드 명령어:**
+```bash
+npm run build
+```
+
+### 백엔드 배포
+
+**1. 프로덕션 빌드:**
 ```bash
 cd backend
-npm run build   # TypeScript → JavaScript 컴파일 (dist/ 폴더)
+npm run build  # dist/ 폴더 생성
 ```
 
-**프로덕션 실행:**
+**2. 실행:**
 ```bash
-npm run start   # node dist/server.js
+NODE_ENV=production PORT=4000 npm run start
 ```
 
-**환경 변수 (.env):**
+**3. 환경 변수:**
+프로덕션 환경에서 `backend/.env` 설정:
 ```env
+DATABASE_URL="file:./prod.db"
 PORT=4000
 NODE_ENV=production
 ```
 
-### 루트 스크립트 (편의 명령어)
+## 프로젝트 구조
 
-루트 디렉토리에서 백엔드 관련 명령어 실행:
-```bash
-npm run backend:dev     # 백엔드 개발 서버 실행
-npm run backend:build   # 백엔드 TypeScript 빌드
-npm run backend:start   # 빌드된 백엔드 실행 (프로덕션)
+```
+LookMate/
+├── src/                    # Frontend 소스
+│   ├── components/         # React 컴포넌트
+│   │   ├── common/        # 공통 컴포넌트 (Button, Modal 등)
+│   │   └── layout/        # 레이아웃 컴포넌트
+│   ├── pages/             # 페이지 컴포넌트
+│   ├── services/          # API 서비스 레이어
+│   ├── store/             # Zustand 상태 관리
+│   └── types/             # TypeScript 타입 정의
+├── backend/               # Backend 소스
+│   ├── src/
+│   │   ├── routes/       # Express 라우터 (ai.ts, data.ts)
+│   │   ├── db.ts         # Prisma Client 싱글톤
+│   │   ├── seed.ts       # 데이터베이스 Seed 스크립트
+│   │   └── server.ts     # Express 서버 진입점
+│   ├── prisma/           # Prisma 스키마 및 마이그레이션
+│   └── uploads/          # 업로드된 파일 저장소
+├── public/               # 정적 파일 (favicon, manifest 등)
+├── .github/              # GitHub Actions CI/CD
+└── README.md            # 프로젝트 문서 (현재 파일)
 ```
 
-### 실제 AI 모델 통합 가이드
+## 현재 구현 상태
 
-`backend/src/routes/ai.ts` 파일의 TODO 주석을 참고하여 다음 단계로 실제 AI 모델을 연동할 수 있습니다:
+### ✅ 완료된 기능
+- 옷장 관리 (추가/수정/삭제/필터링/검색)
+- 가상 피팅 (레이어링, 위치/크기/회전 조정)
+- 코디 저장 및 스냅샷
+- AI 백엔드 Stub (파일 업로드/정적 서빙)
+- 데이터베이스 스키마 및 읽기 API
+- 인증 시스템 (Mock, localStorage 기반)
+- 공개 코디 피드
+- 외부 상품 검색 및 임포트
+- SEO 최적화, PWA 설정
+- 404 페이지, 공통 UI 컴포넌트
 
-**1. 배경 제거 (remove.bg API 예시):**
-```typescript
-// backend/src/routes/ai.ts의 /api/ai/remove-background 엔드포인트
-const FormData = require('form-data');
-const axios = require('axios');
+### ⏳ 향후 개선 사항
+- 실제 AI 모델 통합 (배경 제거, 아바타 생성, 가상 피팅)
+- 데이터베이스 쓰기 API (POST/PUT/DELETE)
+- localStorage → Backend API 마이그레이션
+- 실제 인증 시스템 (JWT, OAuth)
+- 실시간 동기화 (WebSocket)
 
-const formData = new FormData();
-formData.append('image_file', fs.createReadStream(clothImage.path));
-formData.append('size', 'auto');
+## 라이선스
 
-const response = await axios.post('https://api.remove.bg/v1.0/removebg', formData, {
-  headers: {
-    'X-Api-Key': process.env.REMOVEBG_API_KEY,
-  },
-  responseType: 'arraybuffer'
-});
+MIT License
 
-// 처리된 이미지를 uploads/ 폴더에 저장
-const outputPath = path.join(uploadsDir, `nobg-${clothImage.filename}`);
-fs.writeFileSync(outputPath, response.data);
+## 개발자
 
-return { imageUrl: getImageUrl(req, `nobg-${clothImage.filename}`) };
-```
-
-**2. 아바타 생성 (OpenAI DALL-E 예시):**
-```typescript
-// TODO 위치: /api/ai/avatar 엔드포인트
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-const prompt = `Full-body ${gender} avatar, ${bodyType} body type, ${height}cm tall, professional photo`;
-const response = await openai.images.generate({
-  model: "dall-e-3",
-  prompt: prompt,
-  n: 1,
-  size: "1024x1024"
-});
-
-const avatarUrl = response.data[0].url;
-```
-
-**3. 가상 피팅 (GPU 서버 연동 예시):**
-```typescript
-// TODO 위치: /api/ai/try-on 엔드포인트
-const response = await axios.post('http://your-gpu-server:5000/try-on', {
-  avatar_url: avatarImageUrl,
-  garment_urls: clothingImageUrls,
-  model: 'viton-hd'
-});
-
-return { tryOnImageUrl: response.data.result_url };
-```
+LookMate Team

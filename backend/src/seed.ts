@@ -5,13 +5,13 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Clean existing data
+  // 기존 데이터 정리
   await prisma.publicLook.deleteMany();
   await prisma.look.deleteMany();
   await prisma.clothingItem.deleteMany();
   await prisma.user.deleteMany();
 
-  // Create demo users
+  // 데모 사용자 생성
   const user1 = await prisma.user.create({
     data: {
       id: 'demo-user-1',
@@ -40,7 +40,7 @@ async function main() {
 
   console.log('✅ Created users:', user1.displayName, user2.displayName);
 
-  // Create clothing items for user1
+  // user1의 옷 아이템 생성
   const item1 = await prisma.clothingItem.create({
     data: {
       id: 'item-1',
@@ -130,7 +130,7 @@ async function main() {
     },
   });
 
-  // Create clothing items for user2
+  // user2의 옷 아이템 생성
   const item6 = await prisma.clothingItem.create({
     data: {
       id: 'item-6',
@@ -188,7 +188,7 @@ async function main() {
 
   console.log('✅ Created 8 clothing items');
 
-  // Create looks for user1
+  // user1의 룩 생성
   const look1 = await prisma.look.create({
     data: {
       id: 'look-1',
@@ -223,7 +223,7 @@ async function main() {
     },
   });
 
-  // Create looks for user2
+  // user2의 룩 생성
   const look3 = await prisma.look.create({
     data: {
       id: 'look-3',
@@ -242,7 +242,7 @@ async function main() {
 
   console.log('✅ Created 3 looks');
 
-  // Create public looks
+  // 공개 룩 생성
   await prisma.publicLook.create({
     data: {
       id: 'pub-look-1',

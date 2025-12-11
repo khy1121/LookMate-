@@ -5,7 +5,7 @@ import fs from 'fs';
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// 파일 업로드를 위한 Multer 설정
 const uploadsDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (_req, file, cb) => {
-    // Generate unique filename: YYYYMMDD-HHMMSS-random-originalname
+    // 고유한 파일명 생성: YYYYMMDD-HHMMSS-random-originalname
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
     const random = Math.random().toString(36).substring(2, 8);
     const ext = path.extname(file.originalname);
@@ -25,7 +25,7 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter: only accept images
+// 파일 필터: 이미지만 허용
 const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   if (!file.mimetype.startsWith('image/')) {
     return cb(new Error('Only image files are allowed'));
@@ -33,16 +33,16 @@ const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterC
   cb(null, true);
 };
 
-// Multer upload configuration with validation
+// Multer 업로드 설정 (검증 포함)
 const upload = multer({ 
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB max
+    fileSize: 5 * 1024 * 1024 // 최대 5MB
   }
 });
 
-// Helper function to get full image URL
+// 이미지 URL을 반환하는 헬퍼 함수
 const getImageUrl = (req: Request, filename: string): string => {
   const protocol = req.protocol;
   const host = req.get('host');
@@ -51,7 +51,7 @@ const getImageUrl = (req: Request, filename: string): string => {
 
 /**
  * POST /api/ai/avatar
- * Generate full-body avatar from face image
+ * 얼굴 사진으로 전신 아바타 생성
  * 
  * Request (multipart/form-data):
  *   - faceImage: File
@@ -63,7 +63,7 @@ const getImageUrl = (req: Request, filename: string): string => {
  *   - avatarUrl: string
  *   - meta: { modelVersion: string, note: string }
  * 
- * STUB: Currently returns placeholder URL. Replace with actual AI model integration.
+ * STUB: 현재 업로드된 이미지를 그대로 반환합니다. 실제 AI 모델로 교체 필요.
  */
 router.post('/avatar', upload.single('faceImage'), (req: Request, res: Response) => {
   try {
@@ -84,10 +84,10 @@ router.post('/avatar', upload.single('faceImage'), (req: Request, res: Response)
       gender
     });
 
-    // STUB: Currently returns uploaded face image as avatar
-    // TODO: Integrate actual AI avatar generation model here
-    // - Use face image + body parameters to generate full-body avatar
-    // - Options: DALL-E, Stable Diffusion, custom GAN model
+    // STUB: 현재 업로드된 얼굴 이미지를 아바타로 반환
+    // TODO: 실제 AI 아바타 생성 모델 통합
+    // - 얼굴 사진 + 신체 파라미터로 전신 아바타 생성
+    // - 옵션: DALL-E, Stable Diffusion, 커스텀 GAN 모델
     const avatarUrl = getImageUrl(req, faceImage.filename);
 
     res.json({
@@ -108,15 +108,15 @@ router.post('/avatar', upload.single('faceImage'), (req: Request, res: Response)
 
 /**
  * POST /api/ai/remove-background
- * Remove background from clothing image
+ * 옷 이미지의 배경 제거
  * 
  * Request (multipart/form-data):
  *   - clothImage: File
  * 
  * Response:
- *   - imageUrl: string (background-removed image URL)
+ *   - imageUrl: string (배경이 제거된 이미지 URL)
  * 
- * STUB: Currently returns placeholder URL. Replace with remove.bg API or custom model.
+ * STUB: 현재 업로드된 이미지를 그대로 반환합니다. remove.bg API 또는 커스텀 모델로 교체 필요.
  */
 router.post('/remove-background', upload.single('clothImage'), (req: Request, res: Response) => {
   try {
@@ -134,11 +134,11 @@ router.post('/remove-background', upload.single('clothImage'), (req: Request, re
       mimeType: clothImage.mimetype
     });
 
-    // STUB: Currently returns original uploaded image
-    // TODO: Integrate remove.bg API or custom background removal model
+    // STUB: 현재 원본 이미지를 그대로 반환
+    // TODO: remove.bg API 또는 커스텀 배경 제거 모델 통합
     // - Option 1: remove.bg API (https://www.remove.bg/api)
-    // - Option 2: U-2-Net or similar open-source model
-    // - Option 3: Custom-trained model on GPU server
+    // - Option 2: U-2-Net 또는 유사 오픈소스 모델
+    // - Option 3: GPU 서버에 커스텀 학습 모델
     const imageUrl = getImageUrl(req, clothImage.filename);
 
     res.json({
@@ -157,7 +157,7 @@ router.post('/remove-background', upload.single('clothImage'), (req: Request, re
 
 /**
  * POST /api/ai/try-on
- * Virtual try-on: Generate image of avatar wearing clothing
+ * 가상 피팅: 아바타가 옷을 입은 이미지 생성
  * 
  * Request (JSON):
  *   - avatarImageUrl: string
@@ -168,13 +168,13 @@ router.post('/remove-background', upload.single('clothImage'), (req: Request, re
  *   - tryOnImageUrl: string
  *   - meta: { modelVersion: string, note: string }
  * 
- * STUB: Future endpoint for AI-powered virtual try-on.
+ * STUB: AI 기반 가상 피팅을 위한 향후 엔드포인트.
  */
 router.post('/try-on', (req: Request, res: Response) => {
   try {
     const { avatarImageUrl, clothingImageUrls, pose } = req.body;
 
-    // Validation
+    // 입력값 검증
     if (!avatarImageUrl) {
       return res.status(400).json({ error: 'avatarImageUrl is required' });
     }
@@ -190,11 +190,11 @@ router.post('/try-on', (req: Request, res: Response) => {
       pose: pose || 'default'
     });
 
-    // STUB: Return placeholder try-on result
-    // TODO: Integrate virtual try-on AI model
-    // - Options: VITON-HD, HR-VITON, or similar garment transfer models
-    // - Requires GPU inference server
-    // - For now, return avatar URL as placeholder
+    // STUB: 플레이스홀더 가상 피팅 결과 반환
+    // TODO: 가상 피팅 AI 모델 통합
+    // - 옵션: VITON-HD, HR-VITON 또는 유사 의류 전이 모델
+    // - GPU 추론 서버 필요
+    // - 현재는 아바타 URL을 플레이스홀더로 반환
     const tryOnImageUrl = avatarImageUrl;
 
     res.json({
