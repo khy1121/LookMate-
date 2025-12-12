@@ -197,6 +197,49 @@ export const Dashboard: React.FC = () => {
         )}
       </div>
 
+      {/* 빠른 시작 가이드: 새 사용자 안내 카드 */}
+      <div className="my-6">
+        <SectionHeader title="빠른 시작 가이드" />
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <ul className="list-disc list-inside text-sm text-gray-700 space-y-2">
+            <li>옷장에 옷을 등록하세요 (업로드 탭).</li>
+            <li>피팅룸에서 코디를 만들고 저장하세요.</li>
+            <li>대시보드에서 저장한 코디와 간단한 통계를 확인하세요.</li>
+            <li>Explore에서 인기 코디와 유사 상품을 둘러보세요.</li>
+          </ul>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/app/upload')}
+              className="text-sm text-indigo-600 font-medium hover:underline"
+            >
+              업로드 바로가기
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/app/closet')}
+              className="text-sm text-indigo-600 font-medium hover:underline"
+            >
+              옷장 바로가기
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/app/fitting')}
+              className="text-sm text-indigo-600 font-medium hover:underline"
+            >
+              피팅룸 바로가기
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/app/explore')}
+              className="text-sm text-indigo-600 font-medium hover:underline"
+            >
+              Explore 바로가기
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">

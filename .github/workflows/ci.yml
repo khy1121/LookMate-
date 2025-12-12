@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     strategy:
       matrix:
@@ -32,8 +33,16 @@ jobs:
     - name: Build frontend
       run: npm run build
     
-    - name: Install backend dependencies
-      run: cd backend && npm ci
+    - name: Install backend dependencies (with retries)
+      run: |
+        cd backend
+        # npm ci can fail transiently on CI runners; retry a few times and skip audit to speed up
+        for i in 1 2 3; do
+          npm ci --no-audit && break || {
+            echo "npm ci failed (attempt $i) - retrying...";
+            sleep 5;
+          }
+        done
     
     - name: Build backend (type check)
       run: cd backend && npm run build
