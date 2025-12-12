@@ -1,7 +1,7 @@
 <!-- STEP_STATE: LookMate 단계 추적 -->
 # STEP_STATE
 
-- 현재 진행 Step: 39
+- 현재 진행 Step: 40
 
 ## Step 30 완료 요약
 - 목표: 대시보드에 "빠른 시작 가이드" 카드 추가
@@ -56,8 +56,15 @@
 	- 목표: `authService`가 백엔드 `/api/auth`를 사용하도록 전환(백엔드 활성화 시), 401 발생 시 alert 대신 toast로 한 번만 알리고 중앙 로그아웃 처리
 	- 주요 변경: `services/authService.ts`, `services/apiClient.ts`, `store/useStore.ts` (logout 통합 및 lm:unauthorized 이벤트 수신)
 
-	- Step 39: 프로덕션 콘솔 경고 제거 및 외부 placeholder 제거
+	- Step 39: 프로덕션 콘솔 경고 제거 및 외부 placeholder 제거 (완료)
 		- 목표: 빌드/런타임 콘솔에 남는 경고(외부 Tailwind CDN 경고, manifest 아이콘 문제, via.placeholder.com DNS 요청)를 제거
 		- 주요 변경: `services/aiService.ts`, `services/productService.ts`, `services/publicLookService.ts`, `backend/src/seed.ts` — 외부 `via.placeholder.com` 참조를 인라인 SVG data-URI 또는 로컬 대체로 교체
 		- 비고: PWA manifest 아이콘은 `public/icon-192.png`, `public/icon-512.png`로 이미 존재함을 확인함
+
+	- Step 40: 실행 및 남은 콘솔 경고/오류 최소 패치
+		- 목표: `npm run lint`, `npm run build`, `npm run dev`를 실행하여 남아있는 콘솔 경고/오류를 확인하고 최소한의 패치 적용
+		- 수행 내용 요약: `npm run lint` 및 `npm run build` 실행, 개발 서버 실행. 빌드 시 `vite`의 청크 사이즈 경고가 보고되었음(정보성). `via.placeholder.com` 외부 요청은 빌드된 시드 파일(`backend/dist/seed.js`)에 대해 인라인 SVG로 교체하여 제거함.
+		- 주요 변경(최소 패치): `backend/dist/seed.js` (빌드 산출물에 남아있던 `via.placeholder.com` URL을 인라인 SVG data URI로 교체)
+		- 남은 항목: Vite의 번들 크기 경고(정보성), 개발 서버에서 백엔드 미실행일 경우 발생할 수 있는 `ERR_CONNECTION_REFUSED`는 `VITE_API_BASE_URL` 설정 여부에 따라 동작함(프런트엔드는 환경변수로 백엔드 토글함).
+		- 다음 권장 작업: 백엔드가 필요하면 `backend`를 빌드·실행하고 Explore 페이지 동작을 확인; 원하면 frontend에서 백엔드 오프 상태일 때 단일 토스트로 알리고 재시도 스팸을 방지하는 최소 패치 적용 가능
 
