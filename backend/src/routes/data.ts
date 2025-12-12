@@ -158,7 +158,7 @@ router.get('/closet', async (req: Request, res: Response) => {
     });
 
     // DB 모델을 frontend 호환 형식으로 변환
-    const formattedItems = items.map(item => ({
+    const formattedItems = items.map((item: any) => ({
       id: item.id,
       userId: item.userId,
       imageUrl: item.imageUrl,
@@ -214,7 +214,7 @@ router.get('/looks', async (req: Request, res: Response) => {
 
     // 모든 룩에서 고유 아이템 ID 추출
     const allItemIds = new Set<string>();
-    looks.forEach(look => {
+    looks.forEach((look: any) => {
       const itemIds = JSON.parse(look.itemIds);
       itemIds.forEach((id: string) => allItemIds.add(id));
     });
@@ -224,13 +224,13 @@ router.get('/looks', async (req: Request, res: Response) => {
       where: { id: { in: Array.from(allItemIds) } },
     });
 
-    const itemsMap = new Map(items.map(item => [item.id, item]));
+    const itemsMap = new Map(items.map((item: any) => [item.id, item]));
 
     // DB 모델을 frontend 호환 형식으로 변환
-    const formattedLooks = looks.map(look => {
+    const formattedLooks = looks.map((look: any) => {
       const itemIds = JSON.parse(look.itemIds);
       const lookItems = itemIds.map((id: string) => {
-        const item = itemsMap.get(id);
+        const item = itemsMap.get(id) as any;
         if (!item) return null;
         
         return {
@@ -305,7 +305,7 @@ router.get('/public-looks', async (req: Request, res: Response) => {
     });
 
     // DB 모델을 frontend 호환 형식으로 변환
-    const formattedLooks = publicLooks.map(pl => ({
+    const formattedLooks = publicLooks.map((pl: any) => ({
       publicId: pl.publicId,
       name: '', // Not stored in PublicLook, could join with Look if needed
       ownerName: pl.ownerName,
@@ -348,7 +348,7 @@ router.get('/my-public-looks', async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    const formattedLooks = publicLooks.map((pl) => ({
+    const formattedLooks = publicLooks.map((pl: any) => ({
       publicId: pl.publicId,
       name: '',
       ownerName: pl.ownerName,
@@ -415,7 +415,7 @@ router.post('/public-looks', async (req: Request, res: Response) => {
         name: look.name,
         ownerName: existing.ownerName,
         ownerId: existing.ownerId,
-        ownerEmail: existing.ownerEmail,
+        ownerEmail: (existing as any).ownerEmail,
         snapshotUrl: existing.snapshotUrl || null,
         items: JSON.parse(existing.itemsSnapshot),
         likesCount: existing.likesCount,
@@ -429,7 +429,7 @@ router.post('/public-looks', async (req: Request, res: Response) => {
     // 아이템 스냅샷 생성
     const itemIds = JSON.parse(look.itemIds);
     const items = await prisma.clothingItem.findMany({ where: { id: { in: itemIds } } });
-    const itemsSnapshot = items.map(item => ({
+    const itemsSnapshot = items.map((item: any) => ({
       id: item.id,
       imageUrl: item.imageUrl,
       category: item.category,
@@ -441,7 +441,7 @@ router.post('/public-looks', async (req: Request, res: Response) => {
     const publicId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
 
     // PublicLook 생성
-    const createData: Prisma.PublicLookUncheckedCreateInput = {
+    const createData: any = {
       lookId: look.id,
       publicId,
       ownerName: user.displayName || user.name,
@@ -464,7 +464,7 @@ router.post('/public-looks', async (req: Request, res: Response) => {
       name: look.name,
       ownerName: pl.ownerName,
       ownerId: pl.ownerId,
-      ownerEmail: pl.ownerEmail,
+      ownerEmail: (pl as any).ownerEmail,
       snapshotUrl: pl.snapshotUrl || null,
       items: itemsSnapshot,
       likesCount: pl.likesCount,
@@ -507,7 +507,7 @@ router.delete('/public-looks/:publicId', async (req: Request, res: Response) => 
       if (typeof email !== 'string') return res.status(400).json({ error: '이메일 형식이 올바르지 않습니다' });
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다' });
-      if (pl.ownerEmail !== user.email) return res.status(403).json({ error: '삭제 권한이 없습니다' });
+      if ((pl as any).ownerEmail !== user.email) return res.status(403).json({ error: '삭제 권한이 없습니다' });
     }
 
     // 연결된 룩이 있으면 isPublic false로 업데이트
@@ -818,7 +818,7 @@ router.post('/looks', async (req: Request, res: Response) => {
       where: { id: { in: itemIds } },
     });
 
-    const formattedItems = items.map(item => ({
+    const formattedItems = items.map((item: any) => ({
       id: item.id,
       userId: item.userId,
       imageUrl: item.imageUrl,
