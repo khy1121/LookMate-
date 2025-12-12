@@ -34,6 +34,7 @@ interface AppState {
   currentUser: AuthUser | null;
   setCurrentUser: (user: AuthUser | null) => void;
   loadInitialUserAndData: () => Promise<void>;
+  syncUserProfileFromBackend: (email: string) => Promise<void>;
 
   // User State (Legacy - kept for avatar/profile info)
   user: User | null;
@@ -75,16 +76,52 @@ interface AppState {
   publicLooks: PublicLook[];
   likedPublicLookIds: string[];
   bookmarkedPublicLookIds: string[];
-  publishLook: (lookId: string, tags?: string[]) => void;
-  toggleLikePublicLook: (publicId: string) => void;
-  toggleBookmarkPublicLook: (publicId: string) => void;
+  publishLook: (lookId: string, tags?: string[]) => Promise<void>;
+  unpublishPublicLook: (publicId: string) => void;
+  toggleLikePublicLook: (publicId: string) => Promise<void>;
+  toggleBookmarkPublicLook: (publicId: string) => Promise<void>;
   getPublicLookById: (publicId: string) => PublicLook | null;
+  updatePublicLookReactions: (publicId: string, patch: { likesCount?: number; bookmarksCount?: number }) => void;
+  optimisticTogglePublicLookReaction: (publicId: string, type: 'like' | 'bookmark') => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   // Authentication
   currentUser: null,
   isClothesLoading: false,
+
+  // 백엔드에서 프로필 정보를 불러와 상태를 갱신합니다.
+  syncUserProfileFromBackend: async (email: string) => {
+    try {
+      const profile = await dataService.fetchUserProfile(email);
+      set((state) => {
+        if (!state.currentUser) return {};
+        const mergedCurrentUser = {
+          ...state.currentUser,
+          displayName: profile.displayName ?? state.currentUser.displayName,
+          avatarUrl: profile.avatarUrl ?? (state.currentUser as any).avatarUrl ?? null,
+          height: profile.height ?? (state.currentUser as any).height,
+          bodyType: profile.bodyType ?? (state.currentUser as any).bodyType,
+          gender: profile.gender ?? (state.currentUser as any).gender,
+        };
+        const mergedUser = state.user
+          ? {
+              ...state.user,
+              displayName: profile.displayName ?? state.user.displayName,
+              name: profile.displayName ?? state.user.name,
+              avatarUrl: profile.avatarUrl ?? state.user.avatarUrl,
+              height: profile.height ?? (state.user as any).height,
+              bodyType: profile.bodyType ?? (state.user as any).bodyType,
+              gender: profile.gender ?? (state.user as any).gender,
+            }
+          : state.user;
+        return { currentUser: mergedCurrentUser, user: mergedUser };
+      });
+    } catch (err) {
+      console.error('[Store] 프로필 동기화 실패:', err);
+      useUiStore.getState().showToast('프로필 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    }
+  },
   
   setCurrentUser: (user) => {
     set({ currentUser: user, isAuthenticated: !!user });
@@ -123,6 +160,10 @@ export const useStore = create<AppState>((set, get) => ({
         createdAt: user.createdAt,
       };
       set({ user: legacyUser });
+
+      if (USE_BACKEND_DATA && user.email) {
+        get().syncUserProfileFromBackend(user.email);
+      }
     } else {
       // Clear data on logout
       set({ clothes: [], looks: [], user: null, activeLook: null, recommendedItems: null, isClothesLoading: false });
@@ -153,11 +194,34 @@ export const useStore = create<AppState>((set, get) => ({
   },
   
   updateUser: (patch) =>
-    set((state) => {
-      if (!state.user) return {};
-      const updatedUser = { ...state.user, ...patch };
-      return { user: updatedUser };
-    }),
+    {
+      set((state) => {
+        if (!state.user) return {};
+        const updatedUser = { ...state.user, ...patch };
+        const updatedCurrentUser = state.currentUser ? { ...state.currentUser, ...patch } : state.currentUser;
+        return { user: updatedUser, currentUser: updatedCurrentUser };
+      });
+
+      if (USE_BACKEND_DATA) {
+        const email = get().currentUser?.email;
+        if (email) {
+          const current = get().currentUser;
+          dataService
+            .updateUserProfile({
+              email,
+              displayName: patch.displayName ?? current?.displayName,
+              avatarUrl: patch.avatarUrl ?? (current as any)?.avatarUrl ?? null,
+              height: patch.height ?? (current as any)?.height ?? null,
+              bodyType: (patch as any).bodyType ?? (current as any)?.bodyType ?? null,
+              gender: (patch as any).gender ?? (current as any)?.gender ?? null,
+            })
+            .catch((err) => {
+              console.error('[Store] 프로필 업데이트 실패:', err);
+              useUiStore.getState().showToast('프로필 동기화에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
+            });
+        }
+      }
+    },
 
   // Closet
   clothes: [],
@@ -406,6 +470,9 @@ export const useStore = create<AppState>((set, get) => ({
         layers: state.activeLook.layers.map(l => ({ ...l })),
         createdAt: Date.now(),
         snapshotUrl: snapshotUrl || null,
+        isPublic: false,
+        publicId: null,
+        tags: [],
       };
 
       savedLookId = newLook.id;
@@ -633,99 +700,183 @@ export const useStore = create<AppState>((set, get) => ({
   likedPublicLookIds: [],
   bookmarkedPublicLookIds: [],
 
-  publishLook: (lookId, tags = []) =>
-    set((state) => {
-      if (!state.currentUser) {
-        throw new Error('로그인이 필요합니다.');
-      }
+  publishLook: async (lookId, tags = []) => {
+    const state = get();
+    if (!state.currentUser) {
+      throw new Error('로그인이 필요합니다.');
+    }
 
-      const look = state.looks.find((l) => l.id === lookId);
-      if (!look) {
-        throw new Error('코디를 찾을 수 없습니다.');
-      }
+    const targetLook = state.looks.find((l) => l.id === lookId);
+    if (!targetLook) {
+      throw new Error('코디를 찾을 수 없습니다.');
+    }
+    if (targetLook.isPublic) {
+      useUiStore.getState().showToast('이미 공개된 코디입니다.', 'info');
+      return;
+    }
 
+    const tagsToUse = tags.length ? tags : targetLook.tags || [];
+
+    if (!USE_BACKEND_DATA) {
       const publicId = crypto.randomUUID();
       const now = Date.now();
+      set((s) => {
+        const updatedLooks = s.looks.map((l) =>
+          l.id === lookId ? { ...l, isPublic: true, publicId, tags: tagsToUse } : l
+        );
+        const publicLook: PublicLook = {
+          publicId,
+          name: targetLook.name,
+          snapshotUrl: targetLook.snapshotUrl || null,
+          items: targetLook.items,
+          tags: tagsToUse,
+          ownerName: s.currentUser!.displayName,
+          ownerId: s.currentUser!.id,
+          createdAt: now,
+          likesCount: 0,
+          bookmarksCount: 0,
+        };
+        const newPublicLooks = [...s.publicLooks, publicLook];
+        setLocalStorage('lm_publicLooks', newPublicLooks);
+        setLocalStorage(getUserKey(s.currentUser!.id, 'looks'), updatedLooks);
+        return { looks: updatedLooks, publicLooks: newPublicLooks };
+      });
+      useUiStore.getState().showToast('공개 피드에 게시되었습니다.', 'success');
+      return;
+    }
 
-      // Update Look with public metadata
-      const updatedLooks = state.looks.map((l) =>
-        l.id === lookId
-          ? { ...l, isPublic: true, publicId, tags }
-          : l
+    try {
+      const publicLook = await dataService.publishLookToPublicFeed(
+        state.currentUser.email,
+        state.currentUser.displayName,
+        lookId
       );
 
-      // Create PublicLook
-      const publicLook: PublicLook = {
-        publicId,
-        name: look.name,
-        snapshotUrl: look.snapshotUrl || null,
-        items: look.items,
-        tags,
-        ownerName: state.currentUser.displayName,
-        ownerId: state.currentUser.id,
-        createdAt: now,
-        likesCount: 0,
-        bookmarksCount: 0,
-      };
+      // TODO: Explore 피드를 최신화하도록 간단한 refetch 플래그를 연결하면 좋음
+      set((s) => {
+        const updatedLooks = s.looks.map((l) =>
+          l.id === lookId ? { ...l, isPublic: true, publicId: publicLook.publicId, tags: publicLook.tags || tagsToUse } : l
+        );
+        const newPublicLooks = [...s.publicLooks, publicLook];
+        setLocalStorage('lm_publicLooks', newPublicLooks);
+        setLocalStorage(getUserKey(s.currentUser!.id, 'looks'), updatedLooks);
+        return { looks: updatedLooks, publicLooks: newPublicLooks };
+      });
+      useUiStore.getState().showToast('공개 피드에 게시되었습니다.', 'success');
+    } catch (err) {
+      console.error('공개 피드 업로드 실패:', err);
+      useUiStore.getState().showToast('공개 피드 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    }
+  },
 
-      const newPublicLooks = [...state.publicLooks, publicLook];
-
-      // Persist
-      setLocalStorage('lm_publicLooks', newPublicLooks);
-      setLocalStorage(getUserKey(state.currentUser.id, 'looks'), updatedLooks);
-
-      return { looks: updatedLooks, publicLooks: newPublicLooks };
+  unpublishPublicLook: (publicId) =>
+    set((state) => {
+      const updatedPublicLooks = state.publicLooks.filter((pl) => pl.publicId !== publicId);
+      const updatedLooks = state.looks.map((look) =>
+        look.publicId === publicId
+          ? { ...look, isPublic: false, publicId: null }
+          : look
+      );
+      if (state.currentUser) {
+        setLocalStorage('lm_publicLooks', updatedPublicLooks);
+        setLocalStorage(getUserKey(state.currentUser.id, 'looks'), updatedLooks);
+      }
+      return { publicLooks: updatedPublicLooks, looks: updatedLooks };
     }),
 
-  toggleLikePublicLook: (publicId) =>
+  updatePublicLookReactions: (publicId, patch) =>
     set((state) => {
-      if (!state.currentUser) {
-        throw new Error('로그인이 필요합니다.');
+      const updatedPublicLooks = state.publicLooks.map((pl) =>
+        pl.publicId === publicId ? { ...pl, ...patch } : pl
+      );
+      if (state.currentUser) {
+        setLocalStorage('lm_publicLooks', updatedPublicLooks);
+      }
+      return { publicLooks: updatedPublicLooks };
+    }),
+
+  optimisticTogglePublicLookReaction: (publicId, type) =>
+    set((state) => {
+      const isLike = type === 'like';
+      const ids = isLike ? state.likedPublicLookIds : state.bookmarkedPublicLookIds;
+      const already = ids.includes(publicId);
+      const delta = already ? -1 : 1;
+
+      const updatedPublicLooks = state.publicLooks.map((pl) => {
+        if (pl.publicId !== publicId) return pl;
+        if (isLike) {
+          return { ...pl, likesCount: Math.max(0, pl.likesCount + delta) };
+        }
+        return { ...pl, bookmarksCount: Math.max(0, pl.bookmarksCount + delta) };
+      });
+
+      const nextIds = already ? ids.filter((id) => id !== publicId) : [...ids, publicId];
+      if (state.currentUser) {
+        const key = isLike ? 'liked' : 'bookmarked';
+        setLocalStorage(getUserKey(state.currentUser.id, key), nextIds);
+        setLocalStorage('lm_publicLooks', updatedPublicLooks);
       }
 
-      const isLiked = state.likedPublicLookIds.includes(publicId);
-      const newLikedIds = isLiked
-        ? state.likedPublicLookIds.filter((id) => id !== publicId)
-        : [...state.likedPublicLookIds, publicId];
-
-      // Update like count on PublicLook
-      const updatedPublicLooks = state.publicLooks.map((pl) =>
-        pl.publicId === publicId
-          ? { ...pl, likesCount: pl.likesCount + (isLiked ? -1 : 1) }
-          : pl
-      );
-
-      // Persist
-      setLocalStorage(getUserKey(state.currentUser.id, 'liked'), newLikedIds);
-      setLocalStorage('lm_publicLooks', updatedPublicLooks);
-
-      return { likedPublicLookIds: newLikedIds, publicLooks: updatedPublicLooks };
+      return isLike
+        ? { publicLooks: updatedPublicLooks, likedPublicLookIds: nextIds }
+        : { publicLooks: updatedPublicLooks, bookmarkedPublicLookIds: nextIds };
     }),
 
-  toggleBookmarkPublicLook: (publicId) =>
-    set((state) => {
-      if (!state.currentUser) {
-        throw new Error('로그인이 필요합니다.');
+  toggleLikePublicLook: async (publicId) => {
+    const state = get();
+    if (!state.currentUser) {
+      throw new Error('로그인이 필요합니다.');
+    }
+    const demoToastKey = 'lm_like_demo_notice';
+
+    const wasLiked = state.likedPublicLookIds.includes(publicId);
+    state.optimisticTogglePublicLookReaction(publicId, 'like');
+
+    if (!USE_BACKEND_DATA) {
+      if (!sessionStorage.getItem(demoToastKey)) {
+        useUiStore.getState().showToast('데모 모드에서는 좋아요가 새로고침 후 유지되지 않습니다.', 'info');
+        sessionStorage.setItem(demoToastKey, 'shown');
       }
+      return;
+    }
 
-      const isBookmarked = state.bookmarkedPublicLookIds.includes(publicId);
-      const newBookmarkedIds = isBookmarked
-        ? state.bookmarkedPublicLookIds.filter((id) => id !== publicId)
-        : [...state.bookmarkedPublicLookIds, publicId];
+    try {
+      const result = await dataService.togglePublicLookLike(publicId, wasLiked ? 'unlike' : 'like');
+      get().updatePublicLookReactions(publicId, result);
+    } catch (err) {
+      get().optimisticTogglePublicLookReaction(publicId, 'like');
+      console.error('공개 룩 좋아요 실패:', err);
+      useUiStore.getState().showToast('좋아요 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    }
+  },
 
-      // Update bookmark count on PublicLook
-      const updatedPublicLooks = state.publicLooks.map((pl) =>
-        pl.publicId === publicId
-          ? { ...pl, bookmarksCount: pl.bookmarksCount + (isBookmarked ? -1 : 1) }
-          : pl
-      );
+  toggleBookmarkPublicLook: async (publicId) => {
+    const state = get();
+    if (!state.currentUser) {
+      throw new Error('로그인이 필요합니다.');
+    }
+    const demoToastKey = 'lm_bookmark_demo_notice';
 
-      // Persist
-      setLocalStorage(getUserKey(state.currentUser.id, 'bookmarked'), newBookmarkedIds);
-      setLocalStorage('lm_publicLooks', updatedPublicLooks);
+    const wasBookmarked = state.bookmarkedPublicLookIds.includes(publicId);
+    state.optimisticTogglePublicLookReaction(publicId, 'bookmark');
 
-      return { bookmarkedPublicLookIds: newBookmarkedIds, publicLooks: updatedPublicLooks };
-    }),
+    if (!USE_BACKEND_DATA) {
+      if (!sessionStorage.getItem(demoToastKey)) {
+        useUiStore.getState().showToast('데모 모드에서는 북마크가 새로고침 후 유지되지 않습니다.', 'info');
+        sessionStorage.setItem(demoToastKey, 'shown');
+      }
+      return;
+    }
+
+    try {
+      const result = await dataService.togglePublicLookBookmark(publicId, wasBookmarked ? 'unbookmark' : 'bookmark');
+      get().updatePublicLookReactions(publicId, result);
+    } catch (err) {
+      get().optimisticTogglePublicLookReaction(publicId, 'bookmark');
+      console.error('공개 룩 북마크 실패:', err);
+      useUiStore.getState().showToast('북마크 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    }
+  },
 
   getPublicLookById: (publicId) => {
     const state = get();

@@ -34,6 +34,100 @@ async function getOrCreateUserByEmail(email: string, displayName?: string) {
 }
 
 // ============================================
+// 프로필 API
+// ============================================
+
+/**
+ * GET /api/data/profile
+ * 이메일로 사용자 프로필을 조회합니다. 없으면 생성 후 반환합니다.
+ */
+router.get('/profile', async (req: Request, res: Response) => {
+  try {
+    const { email, displayName } = req.query;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: '이메일이 필요합니다' });
+    }
+
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [GET] /api/data/profile email=${email}`);
+
+    const user = await getOrCreateUserByEmail(
+      email,
+      typeof displayName === 'string' ? displayName : undefined
+    );
+
+    const profile = {
+      email: user.email,
+      displayName: user.displayName || user.name,
+      avatarUrl: user.avatarUrl,
+      height: user.height,
+      bodyType: user.bodyType,
+      gender: user.gender,
+    };
+
+    res.json(profile);
+  } catch (error: any) {
+    console.error('❌ 프로필 조회 실패:', error);
+    res.status(500).json({ error: '프로필을 불러오지 못했습니다', message: error.message });
+  }
+});
+
+/**
+ * PUT /api/data/profile
+ * 사용자 프로필을 생성 또는 업데이트합니다.
+ */
+router.put('/profile', async (req: Request, res: Response) => {
+  try {
+    const { email, displayName, avatarUrl, height, bodyType, gender } = req.body || {};
+
+    if (!email || typeof email !== 'string' || email.trim() === '') {
+      return res.status(400).json({ error: '이메일이 비어 있습니다.' });
+    }
+
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [PUT] /api/data/profile email=${email}`);
+
+    const nameFallback = displayName || email.split('@')[0];
+
+    const user = await prisma.user.upsert({
+      where: { email },
+      create: {
+        email,
+        name: nameFallback,
+        displayName: nameFallback,
+        avatarUrl: avatarUrl ?? null,
+        height: height ?? null,
+        bodyType: bodyType ?? null,
+        gender: gender ?? null,
+      },
+      update: {
+        ...(displayName !== undefined ? { displayName } : {}),
+        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+        ...(height !== undefined ? { height } : {}),
+        ...(bodyType !== undefined ? { bodyType } : {}),
+        ...(gender !== undefined ? { gender } : {}),
+      },
+    });
+
+    const profile = {
+      email: user.email,
+      displayName: user.displayName || user.name,
+      avatarUrl: user.avatarUrl,
+      height: user.height,
+      bodyType: user.bodyType,
+      gender: user.gender,
+    };
+
+    console.log('  → 프로필 업데이트 완료');
+    res.json(profile);
+  } catch (error: any) {
+    console.error('❌ 프로필 업데이트 실패:', error);
+    res.status(500).json({ error: '프로필 업데이트에 실패했습니다', message: error.message });
+  }
+});
+
+// ============================================
 // 읽기 API
 // ============================================
 
@@ -772,6 +866,74 @@ router.delete('/looks/:id', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('❌ DELETE /api/data/looks/:id error:', error);
     res.status(500).json({ error: '룩 삭제 실패', message: error.message });
+  }
+});
+
+/**
+ * POST /api/data/public-looks/:publicId/like
+ * 단순 좋아요 카운터 토글 (사용자별 중복 방지 미구현)
+ * TODO: 사용자별 Like 테이블로 분리 예정
+ */
+router.post('/public-looks/:publicId/like', async (req: Request, res: Response) => {
+  try {
+    const { publicId } = req.params;
+    const { action = 'like' } = req.body || {};
+
+    if (!publicId) {
+      return res.status(400).json({ error: 'publicId is required' });
+    }
+
+    const publicLook = await prisma.publicLook.findUnique({ where: { publicId } });
+    if (!publicLook) {
+      return res.status(404).json({ error: 'PublicLook not found' });
+    }
+
+    const delta = action === 'unlike' ? -1 : 1;
+    const nextLikes = Math.max(0, publicLook.likesCount + delta);
+
+    const updated = await prisma.publicLook.update({
+      where: { publicId },
+      data: { likesCount: nextLikes },
+    });
+
+    res.json({ success: true, likesCount: updated.likesCount, bookmarksCount: updated.bookmarksCount });
+  } catch (error: any) {
+    console.error('❌ POST /api/data/public-looks/:publicId/like error:', error);
+    res.status(500).json({ error: '좋아요 처리 실패', message: error.message });
+  }
+});
+
+/**
+ * POST /api/data/public-looks/:publicId/bookmark
+ * 단순 북마크 카운터 토글 (사용자별 중복 방지 미구현)
+ * TODO: 사용자별 Bookmark 테이블로 분리 예정
+ */
+router.post('/public-looks/:publicId/bookmark', async (req: Request, res: Response) => {
+  try {
+    const { publicId } = req.params;
+    const { action = 'bookmark' } = req.body || {};
+
+    if (!publicId) {
+      return res.status(400).json({ error: 'publicId is required' });
+    }
+
+    const publicLook = await prisma.publicLook.findUnique({ where: { publicId } });
+    if (!publicLook) {
+      return res.status(404).json({ error: 'PublicLook not found' });
+    }
+
+    const delta = action === 'unbookmark' ? -1 : 1;
+    const nextBookmarks = Math.max(0, publicLook.bookmarksCount + delta);
+
+    const updated = await prisma.publicLook.update({
+      where: { publicId },
+      data: { bookmarksCount: nextBookmarks },
+    });
+
+    res.json({ success: true, likesCount: updated.likesCount, bookmarksCount: updated.bookmarksCount });
+  } catch (error: any) {
+    console.error('❌ POST /api/data/public-looks/:publicId/bookmark error:', error);
+    res.status(500).json({ error: '북마크 처리 실패', message: error.message });
   }
 });
 

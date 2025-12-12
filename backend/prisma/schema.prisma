@@ -98,8 +98,8 @@ model PublicLook {
   snapshotUrl    String?
   itemsSnapshot  String   // JSON array of ClothingItem objects at publication time
   tags           String   // JSON array of tags
-  likesCount     Int      @default(0)
-  bookmarksCount Int      @default(0)
+  likesCount     Int      @default(0) // 단순 합산 카운터 (사용자별 중복 방지 미구현)
+  bookmarksCount Int      @default(0) // TODO: 사용자별 북마크 테이블로 분리 예정
   createdAt      DateTime @default(now())
   
   // Relations

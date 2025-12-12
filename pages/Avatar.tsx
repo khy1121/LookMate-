@@ -37,6 +37,7 @@ export const Avatar: React.FC = () => {
       });
 
       // Store 업데이트
+      // 스토어가 백엔드 동기화를 함께 처리합니다.
       updateUser({
         avatarUrl: newAvatarUrl,
         height,

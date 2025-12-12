@@ -1,6 +1,15 @@
 import { apiClient } from './apiClient';
 import { ClothingItem, Look, PublicLook } from '../types';
 
+export interface UserProfile {
+  email: string;
+  displayName: string | null;
+  avatarUrl?: string | null;
+  height?: number | null;
+  bodyType?: string | null;
+  gender?: 'male' | 'female' | 'other' | string | null;
+}
+
 /**
  * Data Service - Backend data API integration layer
  * 
@@ -104,6 +113,41 @@ export const dataService = {
       return response.publicLooks;
     } catch (error) {
       console.error('[dataService] fetchPublicLooks error:', error);
+      throw error;
+    }
+  },
+
+  fetchUserProfile: async (email: string): Promise<UserProfile> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+    try {
+      const response = await apiClient.get<UserProfile>('/api/data/profile', {
+        params: { email },
+      });
+      return response;
+    } catch (error) {
+      console.error('[dataService] 프로필 조회 오류:', error);
+      throw error;
+    }
+  },
+
+  updateUserProfile: async (input: {
+    email: string;
+    displayName?: string;
+    avatarUrl?: string | null;
+    height?: number | null;
+    bodyType?: string | null;
+    gender?: 'male' | 'female' | 'other' | string | null;
+  }): Promise<UserProfile> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+    try {
+      const response = await apiClient.put<UserProfile>('/api/data/profile', input);
+      return response;
+    } catch (error) {
+      console.error('[dataService] 프로필 업데이트 오류:', error);
       throw error;
     }
   },
@@ -348,6 +392,44 @@ export const dataService = {
       return response;
     } catch (error) {
       console.error('[dataService] deletePublicLook error:', error);
+      throw error;
+    }
+  },
+
+  togglePublicLookLike: async (
+    publicId: string,
+    action: 'like' | 'unlike'
+  ): Promise<{ likesCount: number; bookmarksCount: number }> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되어 있지 않습니다.');
+    }
+    try {
+      const response = await apiClient.post<{ likesCount: number; bookmarksCount: number }>(
+        `/api/data/public-looks/${publicId}/like`,
+        { action }
+      );
+      return response;
+    } catch (error) {
+      console.error('[dataService] togglePublicLookLike 실패:', error);
+      throw error;
+    }
+  },
+
+  togglePublicLookBookmark: async (
+    publicId: string,
+    action: 'bookmark' | 'unbookmark'
+  ): Promise<{ likesCount: number; bookmarksCount: number }> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되어 있지 않습니다.');
+    }
+    try {
+      const response = await apiClient.post<{ likesCount: number; bookmarksCount: number }>(
+        `/api/data/public-looks/${publicId}/bookmark`,
+        { action }
+      );
+      return response;
+    } catch (error) {
+      console.error('[dataService] togglePublicLookBookmark 실패:', error);
       throw error;
     }
   },

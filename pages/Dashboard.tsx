@@ -15,6 +15,7 @@ export const Dashboard: React.FC = () => {
   const publicLooks = useStore((state) => state.publicLooks);
   const deleteLook = useStore((state) => state.deleteLook);
   const setActiveLookFromLook = useStore((state) => state.setActiveLookFromLook);
+  const publishLook = useStore((state) => state.publishLook);
   
   // Recommendation
   const recommendedItems = useStore((state) => state.recommendedItems);
@@ -23,6 +24,7 @@ export const Dashboard: React.FC = () => {
   const applyRecommendedToActive = useStore((state) => state.applyRecommendedToActive);
 
   const [selectedSeason, setSelectedSeason] = useState<Season | 'all'>('all');
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   // 사용 통계 계산
   const itemUsageStats = useMemo(() => {
@@ -77,6 +79,15 @@ export const Dashboard: React.FC = () => {
   const handleApplyRecommendation = () => {
     applyRecommendedToActive();
     navigate('/app/fitting');
+  };
+
+  const handlePublishLook = async (lookId: string, tags?: string[]) => {
+    setPublishingId(lookId);
+    try {
+      await publishLook(lookId, tags);
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   return (
@@ -333,6 +344,21 @@ export const Dashboard: React.FC = () => {
                     >
                       입어보기
                     </button>
+                <button
+                  type="button"
+                  disabled={!!look.isPublic || publishingId === look.id}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    handlePublishLook(look.id, look.tags || []); 
+                  }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${
+                    look.isPublic
+                      ? 'bg-green-50 text-green-600 cursor-not-allowed'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-200'
+                  } ${publishingId === look.id ? 'opacity-60 cursor-wait' : ''}`}
+                >
+                  {look.isPublic ? '이미 공개됨' : publishingId === look.id ? '올리는 중...' : '공개 피드에 올리기'}
+                </button>
                     <button 
                       type="button"
                       onClick={(e) => { e.stopPropagation(); if(confirm('이 코디를 삭제하시겠습니까?')) deleteLook(look.id); }}

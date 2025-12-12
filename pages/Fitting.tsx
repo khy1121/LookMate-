@@ -52,22 +52,19 @@ export const Fitting: React.FC = () => {
       // 캔버스 ref를 못 찾으면 snapshot 없이 저장
       const savedLookId = createLookFromActive(lookName.trim(), null);
       
-      // 공개 공유 처리
       if (isPublic && savedLookId) {
         const tags = tagsInput
           .split(',')
           .map(t => t.trim())
           .filter(t => t.length > 0);
-        publishLook(savedLookId, tags);
+        await publishLook(savedLookId, tags);
+      } else {
+        showToast('현재 코디가 저장되었습니다! 💾', 'success');
       }
       
       setLookName('');
       setIsPublic(false);
       setTagsInput('');
-      showToast(
-        isPublic ? '코디가 저장되고 공개 피드에 공유되었습니다! 🌍' : '현재 코디가 저장되었습니다! 💾',
-        'success'
-      );
       return;
     }
 
@@ -81,22 +78,19 @@ export const Fitting: React.FC = () => {
       const dataUrl = canvas.toDataURL('image/png');
       const savedLookId = createLookFromActive(lookName.trim(), dataUrl);
       
-      // 공개 공유 처리
       if (isPublic && savedLookId) {
         const tags = tagsInput
           .split(',')
           .map(t => t.trim())
           .filter(t => t.length > 0);
-        publishLook(savedLookId, tags);
+        await publishLook(savedLookId, tags);
+      } else {
+        showToast('현재 코디가 저장되었습니다! 💾', 'success');
       }
       
       setLookName('');
       setIsPublic(false);
       setTagsInput('');
-      showToast(
-        isPublic ? '코디가 저장되고 공개 피드에 공유되었습니다! 🌍' : '현재 코디가 저장되었습니다! 💾',
-        'success'
-      );
     } catch (err) {
       console.error('스냅샷 생성 실패', err);
       // 실패 시에도 최소한 데이터는 저장되도록 fallback
@@ -107,16 +101,14 @@ export const Fitting: React.FC = () => {
           .split(',')
           .map(t => t.trim())
           .filter(t => t.length > 0);
-        publishLook(savedLookId, tags);
+        await publishLook(savedLookId, tags);
+      } else {
+        showToast('코디가 저장되었습니다 (미리보기 생성 실패)', 'info');
       }
       
       setLookName('');
       setIsPublic(false);
       setTagsInput('');
-      showToast(
-        isPublic ? '코디가 저장되고 공개 피드에 공유되었습니다 (미리보기 생성 실패)' : '코디가 저장되었습니다 (미리보기 생성 실패)',
-        'info'
-      );
     } finally {
       setSaving(false);
     }
