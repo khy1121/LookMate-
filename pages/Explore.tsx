@@ -17,6 +17,7 @@ export const Explore: React.FC = () => {
   const toggleLikePublicLook = useStore((s) => s.toggleLikePublicLook);
   const toggleBookmarkPublicLook = useStore((s) => s.toggleBookmarkPublicLook);
   const currentUser = useStore((s) => s.currentUser);
+  const unpublishPublicLook = useStore((s) => s.unpublishPublicLook);
   const addClothingFromProduct = useStore((s) => s.addClothingFromProduct);
   const showToast = useUiStore((s) => s.showToast);
 
@@ -146,6 +147,7 @@ export const Explore: React.FC = () => {
       showToast('공개 피드에서 삭제되었습니다.', 'success');
       // 전략 A: 로컬 상태에서 삭제된 publicId를 필터링해 반영
       setBackendLooks((prev) => prev.filter((look) => look.publicId !== selectedLook.publicId));
+      unpublishPublicLook(selectedLook.publicId);
       handleCloseModal();
     } catch (error) {
       console.error('[Explore] deletePublicLook error:', error);
