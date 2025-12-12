@@ -35,12 +35,8 @@ AI 기술을 활용한 개인 맞춤형 패션 코디 및 가상 피팅 서비�
 - **빌드**: Vite 6.x
 
 ### Backend
-- **Runtime**: Node.js + Express
-- **언어**: TypeScript
-- **데이터베이스**: SQLite + Prisma ORM
-- **파일 업로드**: Multer (multipart/form-data)
-- **AI API**: Stub 구현 (실제 모델 연동 준비 완료)
 
+- 프리즈마 마이그레이션 관련 작업은 추후(별도 Step) 후보입니다.
 ## 로컬 개발 환경 설정
 
 ### 필수 요구사항
