@@ -329,6 +329,50 @@ router.get('/public-looks', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/data/my-public-looks
+ * 특정 사용자의 공개 코디만 조회
+ */
+router.get('/my-public-looks', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.query;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: '이메일이 필요합니다' });
+    }
+
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [GET] /api/data/my-public-looks email=${email}`);
+
+    const publicLooks = await prisma.publicLook.findMany({
+      where: { ownerEmail: email },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const formattedLooks = publicLooks.map((pl) => ({
+      publicId: pl.publicId,
+      name: '',
+      ownerName: pl.ownerName,
+      ownerId: pl.ownerId,
+      ownerEmail: pl.ownerEmail,
+      snapshotUrl: pl.snapshotUrl || null,
+      items: JSON.parse(pl.itemsSnapshot),
+      itemsSnapshot: JSON.parse(pl.itemsSnapshot),
+      likesCount: pl.likesCount,
+      bookmarksCount: pl.bookmarksCount,
+      createdAt: pl.createdAt.getTime(),
+      tags: JSON.parse(pl.tags),
+    }));
+
+    console.log(`  → 요청 이메일=${email}, 반환 개수=${formattedLooks.length}`);
+
+    res.json({ publicLooks: formattedLooks });
+  } catch (error: any) {
+    console.error('❌ /api/data/my-public-looks 오류:', error);
+    res.status(500).json({ error: '내 공개 코디 목록을 불러오지 못했습니다' });
+  }
+});
+
+/**
  * POST /api/data/public-looks
  * 공개 피드에 룩을 올리는 API
  * 

@@ -76,6 +76,8 @@ interface AppState {
   publicLooks: PublicLook[];
   likedPublicLookIds: string[];
   bookmarkedPublicLookIds: string[];
+  myPublicLooks: PublicLook[];
+  isMyPublicLooksLoading: boolean;
   publishLook: (lookId: string, tags?: string[]) => Promise<void>;
   unpublishPublicLook: (publicId: string) => void;
   toggleLikePublicLook: (publicId: string) => Promise<void>;
@@ -83,6 +85,7 @@ interface AppState {
   getPublicLookById: (publicId: string) => PublicLook | null;
   updatePublicLookReactions: (publicId: string, patch: { likesCount?: number; bookmarksCount?: number }) => void;
   optimisticTogglePublicLookReaction: (publicId: string, type: 'like' | 'bookmark') => void;
+  loadMyPublicLooks: () => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -163,10 +166,13 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (USE_BACKEND_DATA && user.email) {
         get().syncUserProfileFromBackend(user.email);
+        get().loadMyPublicLooks();
+      } else {
+        set({ myPublicLooks: [] });
       }
     } else {
       // Clear data on logout
-      set({ clothes: [], looks: [], user: null, activeLook: null, recommendedItems: null, isClothesLoading: false });
+      set({ clothes: [], looks: [], user: null, activeLook: null, recommendedItems: null, isClothesLoading: false, myPublicLooks: [], isMyPublicLooksLoading: false });
     }
   },
 
@@ -699,6 +705,30 @@ export const useStore = create<AppState>((set, get) => ({
   publicLooks: getLocalStorage<PublicLook[]>('lm_publicLooks', []),
   likedPublicLookIds: [],
   bookmarkedPublicLookIds: [],
+  myPublicLooks: [],
+  isMyPublicLooksLoading: false,
+
+  loadMyPublicLooks: async () => {
+    const state = get();
+    if (!state.currentUser || !state.currentUser.email) return;
+
+    if (!USE_BACKEND_DATA) {
+      console.log('[Store] 백엔드 비활성화: 내 공개 코디는 로드하지 않습니다.');
+      set({ myPublicLooks: [] });
+      return;
+    }
+
+    set({ isMyPublicLooksLoading: true });
+    try {
+      const publicLooks = await dataService.fetchMyPublicLooks(state.currentUser.email);
+      set({ myPublicLooks: publicLooks });
+    } catch (err) {
+      console.error('[Store] 내 공개 코디 로드 실패:', err);
+      useUiStore.getState().showToast('내 공개 코디 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    } finally {
+      set({ isMyPublicLooksLoading: false });
+    }
+  },
 
   publishLook: async (lookId, tags = []) => {
     const state = get();
@@ -732,14 +762,16 @@ export const useStore = create<AppState>((set, get) => ({
           tags: tagsToUse,
           ownerName: s.currentUser!.displayName,
           ownerId: s.currentUser!.id,
+          ownerEmail: s.currentUser!.email,
           createdAt: now,
           likesCount: 0,
           bookmarksCount: 0,
         };
         const newPublicLooks = [...s.publicLooks, publicLook];
+        const nextMyPublicLooks = [publicLook, ...s.myPublicLooks.filter((pl) => pl.publicId !== publicId)];
         setLocalStorage('lm_publicLooks', newPublicLooks);
         setLocalStorage(getUserKey(s.currentUser!.id, 'looks'), updatedLooks);
-        return { looks: updatedLooks, publicLooks: newPublicLooks };
+        return { looks: updatedLooks, publicLooks: newPublicLooks, myPublicLooks: nextMyPublicLooks };
       });
       useUiStore.getState().showToast('공개 피드에 게시되었습니다.', 'success');
       return;
@@ -758,9 +790,10 @@ export const useStore = create<AppState>((set, get) => ({
           l.id === lookId ? { ...l, isPublic: true, publicId: publicLook.publicId, tags: publicLook.tags || tagsToUse } : l
         );
         const newPublicLooks = [...s.publicLooks, publicLook];
+        const nextMyPublicLooks = [publicLook, ...s.myPublicLooks.filter((pl) => pl.publicId !== publicLook.publicId)];
         setLocalStorage('lm_publicLooks', newPublicLooks);
         setLocalStorage(getUserKey(s.currentUser!.id, 'looks'), updatedLooks);
-        return { looks: updatedLooks, publicLooks: newPublicLooks };
+        return { looks: updatedLooks, publicLooks: newPublicLooks, myPublicLooks: nextMyPublicLooks };
       });
       useUiStore.getState().showToast('공개 피드에 게시되었습니다.', 'success');
     } catch (err) {
@@ -772,6 +805,7 @@ export const useStore = create<AppState>((set, get) => ({
   unpublishPublicLook: (publicId) =>
     set((state) => {
       const updatedPublicLooks = state.publicLooks.filter((pl) => pl.publicId !== publicId);
+      const updatedMyPublicLooks = state.myPublicLooks.filter((pl) => pl.publicId !== publicId);
       const updatedLooks = state.looks.map((look) =>
         look.publicId === publicId
           ? { ...look, isPublic: false, publicId: null }
@@ -781,7 +815,7 @@ export const useStore = create<AppState>((set, get) => ({
         setLocalStorage('lm_publicLooks', updatedPublicLooks);
         setLocalStorage(getUserKey(state.currentUser.id, 'looks'), updatedLooks);
       }
-      return { publicLooks: updatedPublicLooks, looks: updatedLooks };
+      return { publicLooks: updatedPublicLooks, looks: updatedLooks, myPublicLooks: updatedMyPublicLooks };
     }),
 
   updatePublicLookReactions: (publicId, patch) =>
