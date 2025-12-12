@@ -183,6 +183,21 @@ npx prisma studio
 - **아바타 생성**: OpenAI DALL-E, Stable Diffusion
 - **가상 피팅**: VITON-HD, HR-VITON (GPU 서버 필요)
 
+## Backend API 엔드포인트
+
+| Method | Endpoint                   | 설명                       |
+|--------|----------------------------|----------------------------|
+| GET    | /api/data/closet          | 옷장 목록 조회             |
+| POST   | /api/data/closet          | 옷장 아이템 추가           |
+| PUT    | /api/data/closet/:id      | 옷장 아이템 수정           |
+| DELETE | /api/data/closet/:id      | 옷장 아이템 삭제           |
+| GET    | /api/data/looks           | 룩 목록 조회               |
+| POST   | /api/data/looks           | 룩 추가                    |
+| DELETE | /api/data/looks/:id       | 룩 삭제                    |
+| GET    | /api/data/public-looks    | 공개 코디 피드 조회        |
+
+> 현재 프론트엔드는 localStorage를 주 저장소로 사용하며, 백엔드 API와의 동기화는 점진적으로 마이그레이션될 예정입니다.
+
 ## 배포
 
 ### Vercel / Netlify 배포

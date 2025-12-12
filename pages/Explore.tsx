@@ -25,6 +25,7 @@ export const Explore: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [deletingPublicLook, setDeletingPublicLook] = useState(false);
   
   // 백엔드 데이터 로딩 상태
   const [backendLooks, setBackendLooks] = useState<PublicLook[]>([]);
@@ -124,6 +125,33 @@ export const Explore: React.FC = () => {
       showToast(`"${product.name}"이(가) 옷장에 추가되었습니다!`, 'success');
     } catch (error: any) {
       showToast(error.message || '옷장에 추가하는 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedLook(null);
+    setSelectedItem(null);
+    setSimilarProducts([]);
+    setDeletingPublicLook(false);
+  };
+
+  const handleDeleteSelectedLook = async () => {
+    if (!selectedLook) return;
+    const confirmed = window.confirm('정말로 공개 피드에서 삭제할까요?');
+    if (!confirmed) return;
+
+    setDeletingPublicLook(true);
+    try {
+      await dataService.deletePublicLook(selectedLook.publicId);
+      showToast('공개 피드에서 삭제되었습니다.', 'success');
+      // 전략 A: 로컬 상태에서 삭제된 publicId를 필터링해 반영
+      setBackendLooks((prev) => prev.filter((look) => look.publicId !== selectedLook.publicId));
+      handleCloseModal();
+    } catch (error) {
+      console.error('[Explore] deletePublicLook error:', error);
+      showToast('삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    } finally {
+      setDeletingPublicLook(false);
     }
   };
 
@@ -254,11 +282,7 @@ export const Explore: React.FC = () => {
       {selectedLook && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => {
-            setSelectedLook(null);
-            setSelectedItem(null);
-            setSimilarProducts([]);
-          }}
+          onClick={handleCloseModal}
         >
           <div
             className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
@@ -267,26 +291,35 @@ export const Explore: React.FC = () => {
             <div className="p-6">
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <h3 className="font-bold text-gray-800">{selectedLook.ownerName}</h3>
-                    <div className="flex gap-3 text-sm text-gray-500">
-                      <span>❤️ {selectedLook.likesCount}</span>
-                      <span>🔖 {selectedLook.bookmarksCount}</span>
-                    </div>
+              <div className="flex items-center gap-3">
+                <div>
+                  <h3 className="font-bold text-gray-800">{selectedLook.ownerName}</h3>
+                  <div className="flex gap-3 text-sm text-gray-500">
+                    <span>❤️ {selectedLook.likesCount}</span>
+                    <span>🔖 {selectedLook.bookmarksCount}</span>
                   </div>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentUser?.email &&
+                  selectedLook.ownerEmail &&
+                  currentUser.email === selectedLook.ownerEmail && (
+                    <button
+                      onClick={handleDeleteSelectedLook}
+                      disabled={deletingPublicLook}
+                      className="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg border border-red-100 hover:bg-red-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {deletingPublicLook ? '삭제 중...' : '공개 해제 / 삭제'}
+                    </button>
+                  )}
                 <button
-                  onClick={() => {
-                    setSelectedLook(null);
-                    setSelectedItem(null);
-                    setSimilarProducts([]);
-                  }}
+                  onClick={handleCloseModal}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   ✕
                 </button>
               </div>
+            </div>
 
               {/* Snapshot */}
               {selectedLook.snapshotUrl && (

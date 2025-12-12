@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { User, ClothingItem, Look, ActiveLook, FittingLayer, Season, Product, Category, AuthUser, PublicLook } from '../types';
 import { getCurrentUser } from '../services/authService';
+import { dataService } from '../services/dataService';
+import { useUiStore } from './useUiStore';
+
+const USE_BACKEND_DATA = !!import.meta.env.VITE_API_BASE_URL;
 
 // LocalStorage Helper - User-specific keys
 const getUserKey = (userId: string, resource: string): string => {
@@ -40,6 +44,7 @@ interface AppState {
 
   // Closet State
   clothes: ClothingItem[];
+  isClothesLoading: boolean;
   addClothing: (item: Omit<ClothingItem, 'id' | 'createdAt' | 'isFavorite'>) => void;
   removeClothing: (id: string) => void;
   toggleFavorite: (id: string) => void;
@@ -79,6 +84,7 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   // Authentication
   currentUser: null,
+  isClothesLoading: false,
   
   setCurrentUser: (user) => {
     set({ currentUser: user, isAuthenticated: !!user });
@@ -89,6 +95,23 @@ export const useStore = create<AppState>((set, get) => ({
       const clothes = getLocalStorage<ClothingItem[]>(clothesKey, []);
       const looks = getLocalStorage<Look[]>(looksKey, []);
       set({ clothes, looks });
+
+      // 백엔드가 켜져 있을 때는 서버 데이터를 우선으로 동기화
+      if (USE_BACKEND_DATA) {
+        set({ isClothesLoading: true });
+        dataService
+          .fetchClosetItems(user.id)
+          .then((items) => {
+            set({ clothes: items });
+            setLocalStorage(clothesKey, items);
+          })
+          .catch((err) => {
+            console.error('[Closet] 백엔드 옷장 로드 실패:', err);
+            useUiStore.getState().showToast('옷장 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.', 'error');
+            // 로컬 캐시로 fallback (이미 set되어 있음)
+          })
+          .finally(() => set({ isClothesLoading: false }));
+      }
 
       // Sync legacy user object
       const legacyUser: User = {
@@ -102,7 +125,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({ user: legacyUser });
     } else {
       // Clear data on logout
-      set({ clothes: [], looks: [], user: null, activeLook: null, recommendedItems: null });
+      set({ clothes: [], looks: [], user: null, activeLook: null, recommendedItems: null, isClothesLoading: false });
     }
   },
 
@@ -144,50 +167,152 @@ export const useStore = create<AppState>((set, get) => ({
       if (!state.currentUser) {
         throw new Error('로그인이 필요합니다.');
       }
-      
-      const newItem: ClothingItem = {
-        ...itemData,
-        id: crypto.randomUUID(),
-        userId: state.currentUser.id,
-        createdAt: Date.now(),
-        isFavorite: false,
-        shoppingUrl: itemData.shoppingUrl ?? null,
-        price: itemData.price ?? null,
-        isPurchased: itemData.isPurchased ?? false,
-      };
-      const newClothes = [newItem, ...state.clothes];
-      const clothesKey = getUserKey(state.currentUser.id, 'clothes');
-      setLocalStorage(clothesKey, newClothes);
-      return { clothes: newClothes };
+
+      if (!USE_BACKEND_DATA) {
+        const newItem: ClothingItem = {
+          ...itemData,
+          id: crypto.randomUUID(),
+          userId: state.currentUser.id,
+          createdAt: Date.now(),
+          isFavorite: false,
+          shoppingUrl: itemData.shoppingUrl ?? null,
+          price: itemData.price ?? null,
+          isPurchased: itemData.isPurchased ?? false,
+        };
+        const newClothes = [newItem, ...state.clothes];
+        const clothesKey = getUserKey(state.currentUser.id, 'clothes');
+        setLocalStorage(clothesKey, newClothes);
+        return { clothes: newClothes };
+      }
+
+      // 백엔드 모드: 서버 저장 후 반영
+      dataService
+        .createClothingItemForUser(
+          state.currentUser.email,
+          state.currentUser.displayName,
+          {
+            ...itemData,
+            isFavorite: false,
+            shoppingUrl: itemData.shoppingUrl ?? null,
+            price: itemData.price ?? null,
+            isPurchased: itemData.isPurchased ?? false,
+          }
+        )
+        .then((created) => {
+          set((innerState) => {
+            const newClothes = [created, ...innerState.clothes];
+            const clothesKey = getUserKey(innerState.currentUser!.id, 'clothes');
+            setLocalStorage(clothesKey, newClothes);
+            return { clothes: newClothes };
+          });
+        })
+        .catch((err) => {
+          console.error('[Closet] 옷 추가 실패:', err);
+          useUiStore.getState().showToast('저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+        });
+
+      return {};
     }),
     
   removeClothing: (id) =>
     set((state) => {
       if (!state.currentUser) return {};
-      const newClothes = state.clothes.filter((c) => c.id !== id);
-      const clothesKey = getUserKey(state.currentUser.id, 'clothes');
-      setLocalStorage(clothesKey, newClothes);
-      return { clothes: newClothes };
+
+      if (!USE_BACKEND_DATA) {
+        const newClothes = state.clothes.filter((c) => c.id !== id);
+        const clothesKey = getUserKey(state.currentUser.id, 'clothes');
+        setLocalStorage(clothesKey, newClothes);
+        return { clothes: newClothes };
+      }
+
+      dataService
+        .deleteClothingItem(state.currentUser.email, id)
+        .then(() => {
+          set((innerState) => {
+            const newClothes = innerState.clothes.filter((c) => c.id !== id);
+            const clothesKey = getUserKey(innerState.currentUser!.id, 'clothes');
+            setLocalStorage(clothesKey, newClothes);
+            return { clothes: newClothes };
+          });
+        })
+        .catch((err) => {
+          console.error('[Closet] 옷 삭제 실패:', err);
+          useUiStore.getState().showToast('저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+        });
+
+      return {};
     }),
   toggleFavorite: (id) =>
     set((state) => {
       if (!state.currentUser) return {};
-      const newClothes = state.clothes.map((c) =>
-        c.id === id ? { ...c, isFavorite: !c.isFavorite } : c
-      );
-      const clothesKey = getUserKey(state.currentUser.id, 'clothes');
-      setLocalStorage(clothesKey, newClothes);
-      return { clothes: newClothes };
+      const target = state.clothes.find((c) => c.id === id);
+      if (!target) return {};
+      const nextFavorite = !target.isFavorite;
+
+      if (!USE_BACKEND_DATA) {
+        const newClothes = state.clothes.map((c) =>
+          c.id === id ? { ...c, isFavorite: nextFavorite } : c
+        );
+        const clothesKey = getUserKey(state.currentUser.id, 'clothes');
+        setLocalStorage(clothesKey, newClothes);
+        return { clothes: newClothes };
+      }
+
+      dataService
+        .updateClothingItem(state.currentUser.email, id, { isFavorite: nextFavorite })
+        .then((updated) => {
+          set((innerState) => {
+            const newClothes = innerState.clothes.map((c) =>
+              c.id === id ? { ...updated } : c
+            );
+            const clothesKey = getUserKey(innerState.currentUser!.id, 'clothes');
+            setLocalStorage(clothesKey, newClothes);
+            return { clothes: newClothes };
+          });
+        })
+        .catch((err) => {
+          console.error('[Closet] 즐겨찾기 변경 실패:', err);
+          useUiStore.getState().showToast('저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+        });
+
+      return {};
     }),
   updateClothing: (id, patch) =>
     set((state) => {
       if (!state.currentUser) return {};
-      const newClothes = state.clothes.map((c) =>
-        c.id === id ? { ...c, ...patch } : c
-      );
-      const clothesKey = getUserKey(state.currentUser.id, 'clothes');
-      setLocalStorage(clothesKey, newClothes);
-      return { clothes: newClothes };
+
+      if (!USE_BACKEND_DATA) {
+        const newClothes = state.clothes.map((c) =>
+          c.id === id ? { ...c, ...patch } : c
+        );
+        const clothesKey = getUserKey(state.currentUser.id, 'clothes');
+        setLocalStorage(clothesKey, newClothes);
+        return { clothes: newClothes };
+      }
+
+      const safePatch = { ...patch } as Partial<Omit<ClothingItem, 'id' | 'userId' | 'createdAt'>>;
+      delete (safePatch as any).id;
+      delete (safePatch as any).userId;
+      delete (safePatch as any).createdAt;
+
+      dataService
+        .updateClothingItem(state.currentUser.email, id, safePatch)
+        .then((updated) => {
+          set((innerState) => {
+            const newClothes = innerState.clothes.map((c) =>
+              c.id === id ? { ...updated } : c
+            );
+            const clothesKey = getUserKey(innerState.currentUser!.id, 'clothes');
+            setLocalStorage(clothesKey, newClothes);
+            return { clothes: newClothes };
+          });
+        })
+        .catch((err) => {
+          console.error('[Closet] 옷 수정 실패:', err);
+          useUiStore.getState().showToast('저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+        });
+
+      return {};
     }),
 
   addClothingFromProduct: (product, override) =>
@@ -227,10 +352,37 @@ export const useStore = create<AppState>((set, get) => ({
         ...override,
       };
 
-      const newClothes = [newItem, ...state.clothes];
-      const clothesKey = getUserKey(state.currentUser.id, 'clothes');
-      setLocalStorage(clothesKey, newClothes);
-      return { clothes: newClothes };
+      if (!USE_BACKEND_DATA) {
+        const newClothes = [newItem, ...state.clothes];
+        const clothesKey = getUserKey(state.currentUser.id, 'clothes');
+        setLocalStorage(clothesKey, newClothes);
+        return { clothes: newClothes };
+      }
+
+      // 백엔드 모드: 생성 후 상태 반영
+      const { email, displayName } = state.currentUser;
+      const payload = { ...newItem };
+      // id/userId/createdAt은 서버에서 관리
+      delete (payload as any).id;
+      delete (payload as any).userId;
+      delete (payload as any).createdAt;
+
+      dataService
+        .createClothingItemForUser(email, displayName, payload as Omit<ClothingItem, 'id' | 'userId' | 'createdAt'>)
+        .then((created) => {
+          set((innerState) => {
+            const newClothes = [created, ...innerState.clothes];
+            const clothesKey = getUserKey(innerState.currentUser!.id, 'clothes');
+            setLocalStorage(clothesKey, newClothes);
+            return { clothes: newClothes };
+          });
+        })
+        .catch((err) => {
+          console.error('[Closet] 상품 기반 추가 실패:', err);
+          useUiStore.getState().showToast('저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+        });
+
+      return {};
     }),
 
   // Looks
@@ -261,6 +413,24 @@ export const useStore = create<AppState>((set, get) => ({
       const newLooks = [newLook, ...state.looks];
       const looksKey = getUserKey(state.currentUser.id, 'looks');
       setLocalStorage(looksKey, newLooks);
+
+      // TODO: Step 23 - 백엔드 동기화
+      // if (import.meta.env.VITE_API_BASE_URL) {
+      //   const lookPayload = {
+      //     name: newLook.name,
+      //     itemIds: usedItemIds,
+      //     layers: newLook.layers,
+      //     snapshotUrl: newLook.snapshotUrl || undefined,
+      //     isPublic: false,
+      //     tags: [],
+      //   };
+      //   dataService.createLookForUser(
+      //     state.currentUser.email,
+      //     state.currentUser.displayName,
+      //     lookPayload
+      //   ).catch(err => console.error('백엔드 동기화 실패:', err));
+      // }
+
       return { looks: newLooks, activeLook: { ...state.activeLook, name } };
     });
     return savedLookId;

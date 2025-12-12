@@ -19,6 +19,7 @@ const CATEGORIES: { value: Category | 'all'; label: string }[] = [
 export const Closet: React.FC = () => {
   const navigate = useNavigate();
   const clothes = useStore((state) => state.clothes);
+  const isClothesLoading = useStore((state) => state.isClothesLoading);
   const toggleFavorite = useStore((state) => state.toggleFavorite);
   const removeClothing = useStore((state) => state.removeClothing);
   const startLookWithItem = useStore((state) => state.startLookWithItem);
@@ -122,7 +123,12 @@ export const Closet: React.FC = () => {
       </div>
 
       {/* Grid Content */}
-      {clothes.length === 0 ? (
+      {isClothesLoading ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-gray-500 py-20">
+          <div className="animate-pulse mb-2">옷장 불러오는 중...</div>
+          <div className="text-sm text-gray-400">잠시만 기다려주세요.</div>
+        </div>
+      ) : clothes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 p-12">
           <div className="text-4xl mb-4">👕</div>
           <p className="mb-2 text-lg font-medium text-gray-600">옷장이 비어있어요.</p>

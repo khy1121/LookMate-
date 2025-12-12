@@ -127,6 +127,7 @@ export interface PublicLook {
   name: string;
   ownerName: string;
   ownerId: string;
+  ownerEmail?: string;
   snapshotUrl: string | null;
   items: ClothingItem[];
   likesCount: number;

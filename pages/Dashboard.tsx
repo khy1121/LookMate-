@@ -327,12 +327,14 @@ export const Dashboard: React.FC = () => {
                 footerSlot={
                   <div className="flex gap-2">
                     <button 
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); handleLoadLook(look.id); }}
                       className="flex-1 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg text-sm hover:bg-indigo-100 transition-colors"
                     >
                       입어보기
                     </button>
                     <button 
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); if(confirm('이 코디를 삭제하시겠습니까?')) deleteLook(look.id); }}
                       className="px-3 py-2 bg-white border border-gray-200 text-gray-400 rounded-lg hover:text-red-500 hover:border-red-200 transition-colors"
                       aria-label={`${look.name} 삭제`}

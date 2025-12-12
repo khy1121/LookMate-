@@ -115,10 +115,15 @@ export async function put<T>(path: string, body: unknown, init?: RequestInit): P
 /**
  * Generic DELETE request
  */
-export async function del<T>(path: string, init?: RequestInit): Promise<T> {
+export async function del<T>(path: string, body?: unknown, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     method: 'DELETE',
+    headers: body ? {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    } : (init?.headers ?? {}),
+    body: body ? JSON.stringify(body) : undefined,
   });
   
   if (!res.ok) {

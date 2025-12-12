@@ -28,17 +28,27 @@ export const LookCard: React.FC<LookCardProps> = ({
   className = '',
   children
 }) => {
-  const CardWrapper = onClick ? 'button' : 'div';
+  // 카드 전체를 클릭 가능하게 만들기 위한 키보드 이벤트 핸들러
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   const interactiveClass = onClick 
     ? 'cursor-pointer hover:shadow-md transition-shadow' 
     : '';
 
   return (
-    <CardWrapper
+    <article
+      role="button"
+      tabIndex={0}
+      aria-label={`${name} 코디 상세보기`}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${interactiveClass} ${className} w-full text-left`}
-      type={onClick ? 'button' : undefined}
-      aria-label={onClick ? `${name} 코디 상세보기` : undefined}
     >
       {/* Snapshot */}
       <div className="aspect-[3/4] bg-gray-100 relative">
@@ -61,8 +71,12 @@ export const LookCard: React.FC<LookCardProps> = ({
           {name}
         </h4>
 
-        {/* Children (custom content) */}
-        {children}
+        {/* children 영역: 내부 버튼 중첩 방지 및 별도 렌더링 */}
+        {children && (
+          <div className="mt-3 flex gap-2">
+            {children}
+          </div>
+        )}
 
         {/* Stats */}
         {(likesCount !== undefined || bookmarksCount !== undefined || itemCount !== undefined) && (
@@ -99,6 +113,6 @@ export const LookCard: React.FC<LookCardProps> = ({
           </div>
         )}
       </div>
-    </CardWrapper>
+    </article>
   );
 };

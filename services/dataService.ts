@@ -107,27 +107,263 @@ export const dataService = {
       throw error;
     }
   },
+
+  // ============================================
+  // 쓰기 API - 옷장 (ClothingItem)
+  // ============================================
+
+  /**
+   * 옷장에 새 옷을 추가 (사용자 이메일 기준으로 백엔드에서 User 연결)
+   * 
+   * @param email - 현재 로그인한 사용자의 이메일
+   * @param displayName - 사용자 표시 이름 (선택)
+   * @param itemPayload - ClothingItem 필드들 (id, userId, createdAt 제외)
+   * @returns Promise<ClothingItem>
+   * 
+   * Backend: POST /api/data/closet
+   */
+  createClothingItemForUser: async (
+    email: string,
+    displayName: string | undefined,
+    itemPayload: Omit<ClothingItem, 'id' | 'userId' | 'createdAt'>
+  ): Promise<ClothingItem> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+
+    try {
+      const response = await apiClient.post<{ item: ClothingItem }>(
+        '/api/data/closet',
+        {
+          email,
+          displayName,
+          item: itemPayload,
+        }
+      );
+
+      console.log(`[dataService] 옷 추가 성공: ${response.item.id}`);
+      return response.item;
+    } catch (error) {
+      console.error('[dataService] createClothingItemForUser error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 옷장 아이템 수정 (소유자만 가능)
+   * 
+   * @param email - 현재 로그인한 사용자의 이메일
+   * @param id - ClothingItem ID
+   * @param patch - 수정할 필드들
+   * @returns Promise<ClothingItem>
+   * 
+   * Backend: PUT /api/data/closet/:id
+   */
+  updateClothingItem: async (
+    email: string,
+    id: string,
+    patch: Partial<Omit<ClothingItem, 'id' | 'userId' | 'createdAt'>>
+  ): Promise<ClothingItem> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+
+    try {
+      const response = await apiClient.put<{ item: ClothingItem }>(
+        `/api/data/closet/${id}`,
+        {
+          email,
+          patch,
+        }
+      );
+
+      console.log(`[dataService] 옷 수정 성공: ${id}`);
+      return response.item;
+    } catch (error) {
+      console.error('[dataService] updateClothingItem error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 옷장 아이템 삭제 (소유자만 가능)
+   * 
+   * @param email - 현재 로그인한 사용자의 이메일
+   * @param id - ClothingItem ID
+   * @returns Promise<{ success: true }>
+   * 
+   * Backend: DELETE /api/data/closet/:id
+   */
+  deleteClothingItem: async (
+    email: string,
+    id: string
+  ): Promise<{ success: boolean }> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+
+    try {
+      const response = await apiClient.del<{ success: boolean }>(
+        `/api/data/closet/${id}`,
+        { email }
+      );
+
+      console.log(`[dataService] 옷 삭제 성공: ${id}`);
+      return response;
+    } catch (error) {
+      console.error('[dataService] deleteClothingItem error:', error);
+      throw error;
+    }
+  },
+
+  // ============================================
+  // 쓰기 API - 룩 (Look)
+  // ============================================
+
+  /**
+   * 새 룩을 저장 (사용자 이메일 기준으로 백엔드에서 User 연결)
+   * 
+   * @param email - 현재 로그인한 사용자의 이메일
+   * @param displayName - 사용자 표시 이름 (선택)
+   * @param lookPayload - Look 필드들 (id, userId, createdAt 제외)
+   * @returns Promise<Look>
+   * 
+   * Backend: POST /api/data/looks
+   */
+  createLookForUser: async (
+    email: string,
+    displayName: string | undefined,
+    lookPayload: {
+      name: string;
+      itemIds: string[];
+      layers: any[];
+      snapshotUrl?: string;
+      isPublic?: boolean;
+      tags?: string[];
+    }
+  ): Promise<Look> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+
+    try {
+      const response = await apiClient.post<{ look: Look }>(
+        '/api/data/looks',
+        {
+          email,
+          displayName,
+          look: lookPayload,
+        }
+      );
+
+      console.log(`[dataService] 룩 저장 성공: ${response.look.id}`);
+      return response.look;
+    } catch (error) {
+      console.error('[dataService] createLookForUser error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 룩 삭제 (소유자만 가능)
+   * 
+   * @param email - 현재 로그인한 사용자의 이메일
+   * @param id - Look ID
+   * @returns Promise<{ success: true }>
+   * 
+   * Backend: DELETE /api/data/looks/:id
+   */
+  deleteLook: async (
+    email: string,
+    id: string
+  ): Promise<{ success: boolean }> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+
+    try {
+      const response = await apiClient.del<{ success: boolean }>(
+        `/api/data/looks/${id}`,
+        { email }
+      );
+
+      console.log(`[dataService] 룩 삭제 성공: ${id}`);
+      return response;
+    } catch (error) {
+      console.error('[dataService] deleteLook error:', error);
+      throw error;
+    }
+  },
+
+  // ============================================
+  // 공개 피드 연동
+  // ============================================
+
+  /**
+   * 공개 피드에 룩을 올리는 함수
+   * 요청에 사용자의 이메일을 함께 보내서 서버에서 User를 찾도록 함
+   */
+  publishLookToPublicFeed: async (
+    email: string,
+    displayName: string | undefined,
+    lookId: string
+  ): Promise<PublicLook> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되지 않았습니다');
+    }
+
+    try {
+      const response = await apiClient.post<{ publicLook: PublicLook }>(
+        '/api/data/public-looks',
+        { email, displayName, lookId }
+      );
+
+      console.log(`[dataService] 공개 룩 생성 성공: ${response.publicLook.publicId}`);
+      return response.publicLook;
+    } catch (error) {
+      console.error('[dataService] publishLookToPublicFeed error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 공개 피드에서 룩을 삭제(공개 해제)하는 함수
+   * 서버에 요청자 이메일을 함께 보내어 권한을 확인함
+   */
+  deletePublicLook: async (
+    publicId: string,
+    email?: string
+  ): Promise<{ success: boolean }> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되어 있지 않습니다.');
+    }
+
+    try {
+      const response = await apiClient.del<{ success: boolean }>(
+        `/api/data/public-looks/${publicId}`,
+        email ? { email } : undefined
+      );
+
+      console.log(`[dataService] 공개 룩 삭제 성공: ${publicId}`);
+      return response;
+    } catch (error) {
+      console.error('[dataService] deletePublicLook error:', error);
+      throw error;
+    }
+  },
 };
 
 /**
- * Migration Plan (Step 19+):
+ * Migration Plan (Step 22+):
  * 
- * 1. Update useStore to optionally load from backend:
- *    - Add `loadClosetFromBackend()` action
- *    - Add `loadLooksFromBackend()` action
- *    - Replace localStorage.getItem() with dataService calls
+ * Step 22 (현재):
+ * - ✅ 백엔드 쓰기 API 구현 완료 (POST/PUT/DELETE for closet & looks)
+ * - ✅ dataService에 쓰기 함수 추가 완료
+ * - ⏳ Zustand 스토어에서 선택적으로 백엔드 호출 (TODO 주석으로 표시)
  * 
- * 2. Add write endpoints:
- *    - POST /api/data/closet - Add clothing item
- *    - PUT /api/data/closet/:id - Update clothing item
- *    - DELETE /api/data/closet/:id - Delete clothing item
- *    - POST /api/data/looks - Create look
- *    - PUT /api/data/looks/:id - Update look
- *    - DELETE /api/data/looks/:id - Delete look
- *    - POST /api/data/public-looks - Publish look
- * 
- * 3. Sync strategy:
- *    - On login: Load all data from backend → Zustand
- *    - On mutations: Update backend → Update Zustand → No localStorage
- *    - Offline support: Keep localStorage as fallback cache
+ * Step 23 (예정):
+ * - localStorage → 백엔드 완전 마이그레이션
+ * - 로그인 시 백엔드에서 데이터 로드 → Zustand
+ * - 모든 쓰기 동작에서 백엔드 동기화
+ * - 오프라인 지원: localStorage를 캐시로 활용
  */
