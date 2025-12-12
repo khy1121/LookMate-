@@ -117,6 +117,24 @@ export const dataService = {
     }
   },
 
+  fetchMyPublicLooks: async (email: string): Promise<PublicLook[]> => {
+    if (!USE_BACKEND_DATA) {
+      throw new Error('백엔드가 설정되어 있지 않습니다.');
+    }
+
+    try {
+      const response = await apiClient.get<{ publicLooks: PublicLook[] }>(
+        '/api/data/my-public-looks',
+        { params: { email } }
+      );
+      console.log(`[dataService] 내 공개 코디 ${response.publicLooks.length}개 로드 완료 (email=${email})`);
+      return response.publicLooks;
+    } catch (error) {
+      console.error('[dataService] fetchMyPublicLooks 실패:', error);
+      throw error;
+    }
+  },
+
   fetchUserProfile: async (email: string): Promise<UserProfile> => {
     if (!USE_BACKEND_DATA) {
       throw new Error('백엔드가 설정되지 않았습니다');

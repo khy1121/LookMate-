@@ -1,10 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
+import { useUiStore } from '../store/useUiStore';
 import { useNavigate } from 'react-router-dom';
 import { Season } from '../types';
 import { LookCard } from '../components/common/LookCard';
 import { SectionHeader } from '../components/common/SectionHeader';
+import { dataService } from '../services/dataService';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -12,10 +14,13 @@ export const Dashboard: React.FC = () => {
   const currentUser = useStore((state) => state.currentUser);
   const clothes = useStore((state) => state.clothes);
   const looks = useStore((state) => state.looks);
-  const publicLooks = useStore((state) => state.publicLooks);
+  const myPublicLooks = useStore((state) => state.myPublicLooks);
+  const isMyPublicLooksLoading = useStore((state) => state.isMyPublicLooksLoading);
   const deleteLook = useStore((state) => state.deleteLook);
   const setActiveLookFromLook = useStore((state) => state.setActiveLookFromLook);
   const publishLook = useStore((state) => state.publishLook);
+  const unpublishPublicLook = useStore((state) => state.unpublishPublicLook);
+  const showToast = useUiStore((state) => state.showToast);
   
   // Recommendation
   const recommendedItems = useStore((state) => state.recommendedItems);
@@ -23,8 +28,11 @@ export const Dashboard: React.FC = () => {
   const clearRecommendedItems = useStore((state) => state.clearRecommendedItems);
   const applyRecommendedToActive = useStore((state) => state.applyRecommendedToActive);
 
+  const USE_BACKEND_DATA = !!import.meta.env.VITE_API_BASE_URL;
+
   const [selectedSeason, setSelectedSeason] = useState<Season | 'all'>('all');
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [unpublishingMap, setUnpublishingMap] = useState<Record<string, boolean>>({});
 
   // 사용 통계 계산
   const itemUsageStats = useMemo(() => {
@@ -90,6 +98,51 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleUnpublishPublicLook = async (publicId: string) => {
+    if (!currentUser) {
+      showToast('로그인이 필요합니다.', 'error');
+      return;
+    }
+    const confirmed = window.confirm('정말로 공개를 해제하고 삭제할까요?');
+    if (!confirmed) return;
+
+    setUnpublishingMap((prev) => ({ ...prev, [publicId]: true }));
+    try {
+      if (USE_BACKEND_DATA) {
+        await dataService.deletePublicLook(publicId, currentUser.email);
+      }
+      unpublishPublicLook(publicId);
+      showToast('공개 코디가 삭제되었습니다.', 'success');
+    } catch (error) {
+      console.error('[Dashboard] 공개 코디 삭제 실패:', error);
+      showToast('삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
+    } finally {
+      setUnpublishingMap((prev) => {
+        const next = { ...prev };
+        delete next[publicId];
+        return next;
+      });
+    }
+  };
+
+  const profileDisplayName = currentUser?.displayName ?? user?.displayName ?? user?.name ?? '이름 없음';
+  const profileEmail = currentUser?.email ?? user?.email ?? '이메일 없음';
+  const profileHeight = (currentUser as any)?.height ?? (user as any)?.height;
+  const profileBodyType = (currentUser as any)?.bodyType ?? (user as any)?.bodyType;
+  const profileGender = (currentUser as any)?.gender ?? (user as any)?.gender;
+  const bodyTypeLabelMap: Record<string, string> = {
+    slim: '슬림형',
+    normal: '보통 체형',
+    athletic: '탄탄한 체형',
+    chubby: '통통한 체형',
+  };
+  const genderLabelMap: Record<string, string> = {
+    male: '남성',
+    female: '여성',
+    unisex: '공용',
+  };
+  const hasProfileDetail = Boolean(profileHeight || profileBodyType || profileGender);
+
   return (
     <div className="space-y-6">
       <header className="mb-8">
@@ -98,6 +151,51 @@ export const Dashboard: React.FC = () => {
         </h2>
         <p className="text-gray-500">오늘의 옷장 상태를 확인해보세요.</p>
       </header>
+
+      {/* 내 프로필 요약 */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800 mb-1">내 프로필</h3>
+            <p className="text-sm text-gray-500">로그인 정보와 저장된 신체 정보를 확인하세요.</p>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div className="p-3 bg-gray-50 rounded-xl">
+            <div className="text-gray-500 text-xs mb-1">사용자 이름</div>
+            <div className="font-semibold text-gray-800 truncate">{profileDisplayName}</div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded-xl">
+            <div className="text-gray-500 text-xs mb-1">이메일</div>
+            <div className="font-semibold text-gray-800 truncate">{profileEmail}</div>
+          </div>
+        </div>
+
+        {hasProfileDetail ? (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="p-3 bg-gray-50 rounded-xl">
+              <div className="text-gray-500 text-xs mb-1">키</div>
+              <div className="font-semibold text-gray-800">{profileHeight ? `${profileHeight}cm` : '미입력'}</div>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-xl">
+              <div className="text-gray-500 text-xs mb-1">체형</div>
+              <div className="font-semibold text-gray-800">
+                {profileBodyType ? bodyTypeLabelMap[profileBodyType] ?? profileBodyType : '미입력'}
+              </div>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-xl">
+              <div className="text-gray-500 text-xs mb-1">성별</div>
+              <div className="font-semibold text-gray-800">
+                {profileGender ? genderLabelMap[profileGender] ?? profileGender : '미입력'}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 p-4 rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-600">
+            아직 프로필 정보가 없습니다. 아바타 화면에서 몸 정보를 저장해보세요.
+          </div>
+        )}
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -398,48 +496,69 @@ export const Dashboard: React.FC = () => {
         )}
       </div>
 
-      {/* 내가 공유한 코디 Section */}
+      {/* 내 공개 코디 Section */}
       {currentUser && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="my-8">
           <SectionHeader 
-            title="🌍 내가 공유한 코디"
-            subtitle="공개 피드에 공유한 코디들입니다"
+            title="내 공개 코디"
+            subtitle="내가 공개한 코디를 한눈에 모아봅니다"
             actionSlot={
               <button
                 onClick={() => navigate('/app/explore')}
                 className="text-indigo-600 text-sm font-medium hover:underline"
               >
-                전체 피드 보기 →
+                공개 피드 보기 →
               </button>
             }
           />
 
-          {publicLooks.filter((pl) => pl.ownerId === currentUser.id).length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
+          {isMyPublicLooksLoading ? (
+            <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
+              내 공개 코디를 불러오는 중입니다...
+            </div>
+          ) : myPublicLooks.length === 0 ? (
+            <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-400">
               <div className="text-4xl mb-3">🌐</div>
-              <p className="mb-4">아직 공유한 코디가 없습니다.</p>
+              <p className="mb-2">아직 공개한 코디가 없어요.</p>
+              <p className="text-sm mb-4">피팅룸에서 코디를 저장한 뒤 공개 피드로 올려보세요.</p>
               <button
                 onClick={() => navigate('/app/fitting')}
                 className="text-indigo-600 font-medium hover:underline"
               >
-                피팅룸에서 코디 만들고 공유하기
+                피팅룸으로 이동하기
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {publicLooks
-                .filter((pl) => pl.ownerId === currentUser.id)
-                .map((publicLook) => (
-                  <LookCard
-                    key={publicLook.publicId}
-                    snapshotUrl={publicLook.snapshotUrl}
-                    name={publicLook.name}
-                    tags={publicLook.tags}
-                    likesCount={publicLook.likesCount}
-                    bookmarksCount={publicLook.bookmarksCount}
-                    onClick={() => navigate(`/look/${publicLook.publicId}`)}
-                  />
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myPublicLooks.map((publicLook) => (
+                <LookCard
+                  key={publicLook.publicId}
+                  snapshotUrl={publicLook.snapshotUrl}
+                  name={publicLook.name || '이름 없는 코디'}
+                  tags={publicLook.tags}
+                  createdAt={publicLook.createdAt}
+                  onClick={() => navigate(`/look/${publicLook.publicId}`)}
+                  footerSlot={
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500">
+                        좋아요 {publicLook.likesCount} · 북마크 {publicLook.bookmarksCount}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleUnpublishPublicLook(publicLook.publicId); }}
+                        disabled={!!unpublishingMap[publicLook.publicId]}
+                        className={`w-full py-2 rounded-lg text-sm font-bold transition-colors border ${
+                          unpublishingMap[publicLook.publicId]
+                            ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50 hover:border-red-200 hover:text-red-600'
+                        }`}
+                      >
+                        {unpublishingMap[publicLook.publicId] ? '삭제 중...' : '공개 해제 / 삭제'}
+                      </button>
+                    </div>
+                  }
+                />
+              ))}
             </div>
           )}
         </div>
