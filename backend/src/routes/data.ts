@@ -396,7 +396,7 @@ router.post('/public-looks', requireAuth, async (req: Request, res: Response) =>
     const createData = {
       lookId: look.id,
       publicId,
-      ownerName: user.displayName,
+      ownerName: user.displayName ?? '',
       ownerEmail: user.email,
       ownerId: user.id,
       snapshotUrl: look.snapshotUrl || null,
@@ -468,6 +468,83 @@ router.delete('/public-looks/:publicId', requireAuth, async (req: Request, res: 
   } catch (error: any) {
     console.error('❌ DELETE /api/data/public-looks/:publicId error:', error);
     res.status(500).json({ error: '공개 룩 삭제 실패', message: error.message });
+  }
+});
+
+/**
+ * POST /api/data/public-looks/:publicId/like
+ * Toggle like for the authenticated user on a PublicLook
+ * Response: { liked: boolean, likesCount: number }
+ */
+router.post('/public-looks/:publicId/like', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { publicId } = req.params;
+    if (!publicId || typeof publicId !== 'string') return res.status(400).json({ error: 'publicId가 필요합니다' });
+    const user = (req as import('../middleware/requireAuth').AuthedRequest).user;
+
+    const pl = await prisma.publicLook.findUnique({ where: { publicId } });
+    if (!pl) return res.status(404).json({ error: '공개 룩을 찾을 수 없습니다' });
+
+    // Check existing like
+    const existing = await prisma.userLike.findUnique({ where: { userId_publicLookId: { userId: user.id, publicLookId: pl.id } } }).catch(() => null);
+
+    if (existing) {
+      // remove like
+      await prisma.$transaction([
+        prisma.userLike.delete({ where: { id: existing.id } }),
+        prisma.publicLook.update({ where: { id: pl.id }, data: { likesCount: { decrement: 1 } } }),
+      ]);
+      const updated = await prisma.publicLook.findUnique({ where: { id: pl.id } });
+      return res.json({ liked: false, likesCount: updated?.likesCount ?? 0 });
+    } else {
+      // create like
+      await prisma.$transaction([
+        prisma.userLike.create({ data: { userId: user.id, publicLookId: pl.id } }),
+        prisma.publicLook.update({ where: { id: pl.id }, data: { likesCount: { increment: 1 } } }),
+      ]);
+      const updated = await prisma.publicLook.findUnique({ where: { id: pl.id } });
+      return res.json({ liked: true, likesCount: updated?.likesCount ?? 0 });
+    }
+  } catch (error: any) {
+    console.error('❌ POST /api/data/public-looks/:publicId/like error:', error);
+    res.status(500).json({ error: '좋아요 처리 실패', message: error.message });
+  }
+});
+
+/**
+ * POST /api/data/public-looks/:publicId/bookmark
+ * Toggle bookmark for the authenticated user on a PublicLook
+ * Response: { bookmarked: boolean, bookmarksCount: number }
+ */
+router.post('/public-looks/:publicId/bookmark', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { publicId } = req.params;
+    if (!publicId || typeof publicId !== 'string') return res.status(400).json({ error: 'publicId가 필요합니다' });
+    const user = (req as import('../middleware/requireAuth').AuthedRequest).user;
+
+    const pl = await prisma.publicLook.findUnique({ where: { publicId } });
+    if (!pl) return res.status(404).json({ error: '공개 룩을 찾을 수 없습니다' });
+
+    const existing = await prisma.userBookmark.findUnique({ where: { userId_publicLookId: { userId: user.id, publicLookId: pl.id } } }).catch(() => null);
+
+    if (existing) {
+      await prisma.$transaction([
+        prisma.userBookmark.delete({ where: { id: existing.id } }),
+        prisma.publicLook.update({ where: { id: pl.id }, data: { bookmarksCount: { decrement: 1 } } }),
+      ]);
+      const updated = await prisma.publicLook.findUnique({ where: { id: pl.id } });
+      return res.json({ bookmarked: false, bookmarksCount: updated?.bookmarksCount ?? 0 });
+    } else {
+      await prisma.$transaction([
+        prisma.userBookmark.create({ data: { userId: user.id, publicLookId: pl.id } }),
+        prisma.publicLook.update({ where: { id: pl.id }, data: { bookmarksCount: { increment: 1 } } }),
+      ]);
+      const updated = await prisma.publicLook.findUnique({ where: { id: pl.id } });
+      return res.json({ bookmarked: true, bookmarksCount: updated?.bookmarksCount ?? 0 });
+    }
+  } catch (error: any) {
+    console.error('❌ POST /api/data/public-looks/:publicId/bookmark error:', error);
+    res.status(500).json({ error: '북마크 처리 실패', message: error.message });
   }
 });
 

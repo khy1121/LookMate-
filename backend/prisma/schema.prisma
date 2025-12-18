@@ -17,71 +17,74 @@ datasource db {
 model User {
   id          String   @id @default(cuid())
   email       String   @unique
-  name        String   // Same as displayName for now
+  name        String // Same as displayName for now
   displayName String
   avatarUrl   String?
   height      Int?
-  bodyType    String?  // 'slim' | 'normal' | 'athletic' | 'chubby'
-  gender      String?  // 'male' | 'female' | 'unisex'
+  bodyType    String? // 'slim' | 'normal' | 'athletic' | 'chubby'
+  gender      String? // 'male' | 'female' | 'unisex'
   createdAt   DateTime @default(now())
-  
+
   // Relations
   clothingItems ClothingItem[]
   looks         Look[]
-  
+  // 좋아요 / 북마크 관계
+  userLikes     UserLike[]
+  userBookmarks UserBookmark[]
+
   // 실제 인증을 위한 비밀번호 해시 필드 추가 (Step 33)
   passwordHash String?
-  
+
   @@map("users")
 }
 
 model ClothingItem {
-  id               String   @id @default(cuid())
+  id               String  @id @default(cuid())
   userId           String
-  category         String   // 'top' | 'bottom' | 'outer' | 'onepiece' | 'shoes' | 'accessory'
-  imageUrl         String   // Background-removed image
+  category         String // 'top' | 'bottom' | 'outer' | 'onepiece' | 'shoes' | 'accessory'
+  imageUrl         String // Background-removed image
   originalImageUrl String
   color            String
-  season           String?  // 'spring' | 'summer' | 'fall' | 'winter'
+  season           String? // 'spring' | 'summer' | 'fall' | 'winter'
   brand            String?
   size             String?
-  tags             String   // JSON array stored as string
+  tags             String // JSON array stored as string
   memo             String?
-  isFavorite       Boolean  @default(false)
-  
+  isFavorite       Boolean @default(false)
+
   // Shopping metadata
   shoppingUrl String?
-  price       Int?     // Price in KRW (원 단위)
-  isPurchased Boolean  @default(false)
-  
+  price       Int? // Price in KRW (원 단위)
+  isPurchased Boolean @default(false)
+
   createdAt DateTime @default(now())
-  
+
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([category])
   @@map("clothing_items")
 }
 
 model Look {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   userId      String
   name        String
-  itemIds     String   // JSON array of ClothingItem IDs
-  layers      String   // JSON array of FittingLayer objects
+  itemIds     String // JSON array of ClothingItem IDs
+  layers      String // JSON array of FittingLayer objects
   snapshotUrl String?
-  
+
   // Public sharing
   isPublic Boolean @default(false)
-  tags     String  // JSON array of tags
-  
+  tags     String // JSON array of tags
+
   createdAt DateTime @default(now())
-  
+
   // Relations
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   publicLook PublicLook?
-  
+
   @@index([userId])
   @@index([isPublic])
   @@map("looks")
@@ -93,20 +96,53 @@ model PublicLook {
   publicId       String   @unique // URL-friendly sharing ID
   ownerName      String
   // 공개 룩 소유자 이메일을 저장합니다 (소유자 확인용)
-  ownerEmail     String
+  ownerEmail     String?
   ownerId        String
   snapshotUrl    String?
-  itemsSnapshot  String   // JSON array of ClothingItem objects at publication time
-  tags           String   // JSON array of tags
+  itemsSnapshot  String // JSON array of ClothingItem objects at publication time
+  tags           String // JSON array of tags
   likesCount     Int      @default(0) // 단순 합산 카운터 (사용자별 중복 방지 미구현)
   bookmarksCount Int      @default(0) // TODO: 사용자별 북마크 테이블로 분리 예정
   createdAt      DateTime @default(now())
-  
+
   // Relations
-  look Look @relation(fields: [lookId], references: [id], onDelete: Cascade)
-  
+  look      Look           @relation(fields: [lookId], references: [id], onDelete: Cascade)
+  // 사용자별 좋아요/북마크 역참조
+  likes     UserLike[]
+  bookmarks UserBookmark[]
+
   @@index([publicId])
   @@index([createdAt])
   @@index([likesCount])
   @@map("public_looks")
+}
+
+// Track which users liked a PublicLook (prevents duplicate likes)
+model UserLike {
+  id           String   @id @default(cuid())
+  userId       String
+  publicLookId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publicLook PublicLook @relation(fields: [publicLookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, publicLookId])
+  @@index([publicLookId])
+  @@map("user_likes")
+}
+
+// Track which users bookmarked a PublicLook (prevents duplicate bookmarks)
+model UserBookmark {
+  id           String   @id @default(cuid())
+  userId       String
+  publicLookId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publicLook PublicLook @relation(fields: [publicLookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, publicLookId])
+  @@index([publicLookId])
+  @@map("user_bookmarks")
 }
