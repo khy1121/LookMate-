@@ -228,6 +228,7 @@ export async function logout(): Promise<void> {
 
   // local cleanup
   try { localStorage.removeItem('lm_token'); } catch (e) {}
+  try { if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('lm_401_shown'); } catch (e) {}
   saveSession(null);
 
   // emit logout event for store cleanup

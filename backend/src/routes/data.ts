@@ -44,7 +44,7 @@ async function getOrCreateUserByEmail(email: string, displayName?: string) {
  */
 router.get('/profile', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = (req.user as any);
+    const { id } = (req as import('../middleware/requireAuth').AuthedRequest).user;
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
     const profile = {
@@ -69,7 +69,7 @@ router.get('/profile', requireAuth, async (req: Request, res: Response) => {
 router.put('/profile', requireAuth, async (req: Request, res: Response) => {
   try {
     const { displayName, avatarUrl, height, bodyType, gender } = req.body || {};
-    const { id } = (req.user as any);
+    const { id } = (req as import('../middleware/requireAuth').AuthedRequest).user;
     const user = await prisma.user.update({
       where: { id },
       data: {
@@ -111,7 +111,7 @@ router.put('/profile', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/closet', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req.user as any);
+    const user = (req as import('../middleware/requireAuth').AuthedRequest).user;
     if (!user || !user.id) return res.status(401).json({ error: '로그인이 필요합니다' });
 
     const timestamp = new Date().toISOString();
@@ -163,7 +163,7 @@ router.get('/closet', requireAuth, async (req: Request, res: Response) => {
  */
 router.get('/looks', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req.user as any);
+    const user = (req as import('../middleware/requireAuth').AuthedRequest).user;
     if (!user || !user.id) return res.status(401).json({ error: '로그인이 필요합니다' });
 
     const timestamp = new Date().toISOString();
@@ -296,7 +296,7 @@ router.get('/public-looks', async (req: Request, res: Response) => {
  */
 router.get('/my-public-looks', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req.user as any);
+    const user = (req as import('../middleware/requireAuth').AuthedRequest).user;
     if (!user || !user.email) return res.status(401).json({ error: '로그인이 필요합니다' });
 
     const timestamp = new Date().toISOString();
@@ -351,7 +351,7 @@ router.post('/public-looks', requireAuth, async (req: Request, res: Response) =>
     if (!lookId || typeof lookId !== 'string') {
       return res.status(400).json({ error: 'lookId가 필요합니다' });
     }
-    const user = (req.user as any);
+    const user = (req as import('../middleware/requireAuth').AuthedRequest).user;
     // 룩 존재 및 소유자 확인
     const look = await prisma.look.findUnique({ where: { id: lookId } });
     if (!look) return res.status(404).json({ error: '룩을 찾을 수 없습니다' });
@@ -448,7 +448,7 @@ router.delete('/public-looks/:publicId', requireAuth, async (req: Request, res: 
 
     const { publicId } = req.params;
     if (!publicId || typeof publicId !== 'string') return res.status(400).json({ error: 'publicId가 필요합니다' });
-    const user = (req.user as any);
+    const user = (req as import('../middleware/requireAuth').AuthedRequest).user;
     const pl = await prisma.publicLook.findUnique({ where: { publicId } });
     if (!pl) return res.status(404).json({ error: '공개 룩을 찾을 수 없습니다' });
     if (pl.ownerEmail !== user.email) return res.status(403).json({ error: '삭제 권한이 없습니다' });
@@ -494,7 +494,7 @@ router.post('/closet', requireAuth, async (req: Request, res: Response) => {
     if (!item || typeof item !== 'object') {
       return res.status(400).json({ error: '옷 정보가 필요합니다' });
     }
-    const userId = (req.user as any).id;
+    const userId = (req as import('../middleware/requireAuth').AuthedRequest).user.id;
     // ClothingItem 생성 (항상 본인 userId)
     const newItem = await prisma.clothingItem.create({
       data: {
@@ -568,7 +568,7 @@ router.put('/closet/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     const timestamp = new Date().toISOString();
-    const userId = (req.user as any).id;
+    const userId = (req as import('../middleware/requireAuth').AuthedRequest).user.id;
     console.log(`[${timestamp}] [PUT] /api/data/closet/${id} user=${userId}`);
 
     // 아이템 소유자 확인
@@ -646,7 +646,7 @@ router.put('/closet/:id', requireAuth, async (req: Request, res: Response) => {
 router.delete('/closet/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any).id;
+    const userId = (req as import('../middleware/requireAuth').AuthedRequest).user.id;
 
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [DELETE] /api/data/closet/${id} user=${userId}`);
@@ -704,7 +704,7 @@ router.post('/looks', requireAuth, async (req: Request, res: Response) => {
     }
 
     const timestamp = new Date().toISOString();
-    const userId = (req.user as any).id;
+    const userId = (req as import('../middleware/requireAuth').AuthedRequest).user.id;
     console.log(`[${timestamp}] [POST] /api/data/looks user=${userId}`);
 
     // Look 생성
@@ -784,7 +784,7 @@ router.post('/looks', requireAuth, async (req: Request, res: Response) => {
 router.delete('/looks/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any).id;
+    const userId = (req as import('../middleware/requireAuth').AuthedRequest).user.id;
 
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [DELETE] /api/data/looks/${id} user=${userId}`);

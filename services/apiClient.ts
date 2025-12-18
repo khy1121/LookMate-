@@ -12,10 +12,12 @@
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '';
 
 // Minimal 401 handling UX: show a single toast, clear token, emit logout event and redirect
-let alreadyShown401 = false;
+const ALREADY_401_KEY = 'lm_401_shown';
+let alreadyShown401 = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(ALREADY_401_KEY) === 'true') || false;
 function handleUnauthorized() {
   if (alreadyShown401) return;
   alreadyShown401 = true;
+  try { if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(ALREADY_401_KEY, 'true'); } catch (e) {}
   try {
     if (typeof localStorage !== 'undefined') localStorage.removeItem('lm_token');
     // 한글 토스트로 알림
@@ -38,7 +40,10 @@ function handleUnauthorized() {
 
     // redirect after a short delay to allow logout handlers to run
     setTimeout(() => {
-      try { window.location.href = '/'; } catch (e) {}
+      try {
+        // avoid reload loop if already at root
+        if (window.location.pathname !== '/') window.location.href = '/';
+      } catch (e) {}
     }, 250);
   } catch (e) {
     // ignore

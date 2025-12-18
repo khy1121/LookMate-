@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
-import { requireAuth } from '../middleware/requireAuth';
+import { requireAuth, AuthedRequest } from '../middleware/requireAuth';
 
 const router = Router();
 
@@ -23,7 +23,8 @@ router.post('/register', async (req: Request, res: Response) => {
     });
     return res.json({ success: true });
   } catch (err) {
-    return res.status(500).json({ error: '회원가입 중 오류가 발생했습니다.' });
+    console.error('Register error:', err);
+    return res.status(500).json({ error: '회원가입 중 오류가 발생했습니다.', detail: String(err) });
   }
 });
 
@@ -51,7 +52,8 @@ router.post('/login', async (req: Request, res: Response) => {
     );
     return res.json({ token });
   } catch (err) {
-    return res.status(500).json({ error: '로그인 중 오류가 발생했습니다.' });
+    console.error('Login error:', err);
+    return res.status(500).json({ error: '로그인 중 오류가 발생했습니다.', detail: String(err) });
   }
 });
 
@@ -64,7 +66,7 @@ router.post('/logout', (req: Request, res: Response) => {
 // 내 정보 조회
 router.get('/me', requireAuth, async (req: Request, res: Response) => {
   // req.user는 requireAuth에서 주입
-  const user = req.user as any;
+  const user = (req as AuthedRequest).user;
   return res.json({
     id: user.id,
     email: user.email,

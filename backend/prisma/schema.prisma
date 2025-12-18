@@ -93,7 +93,7 @@ model PublicLook {
   publicId       String   @unique // URL-friendly sharing ID
   ownerName      String
   // 공개 룩 소유자 이메일을 저장합니다 (소유자 확인용)
-  ownerEmail     String   @db.Text
+  ownerEmail     String
   ownerId        String
   snapshotUrl    String?
   itemsSnapshot  String   // JSON array of ClothingItem objects at publication time
